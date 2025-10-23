@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Checkers / Draughts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            overscroll-behavior: none;
+        }
+        .king::after {
+            content: '👑';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 60%;
+            color: gold;
+            text-shadow: 0 0 2px black;
+        }
+        .highlight-move::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40%;
+            height: 40%;
+            background-color: rgba(5, 150, 105, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .animating-piece {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+    </style>
+</head>
+<body class="bg-gray-800 text-white font-sans antialiased">
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root" class="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4"></div>
+    
+    <script type="module">
+        import { GoogleGenAI, Type } from "https://aistudiocdn.com/@google/genai@^1.26.0";
+
+        // --- CONSTANTS ---
+        const BOARD_SIZES = { american: 8, international: 10 };
+        const PIECE_COUNTS = { american: 12, international: 20 };
+        const THEMES = {
+            classic: {
+                name: 'Classic',
+                boardBg: 'bg-yellow-800',
+                darkSquare: 'bg-yellow-900',
+                lightSquare: 'bg-amber-200',
+                whitePiece: 'bg-gray-200 border-gray-400',
+                blackPiece: 'bg-gray-900 border-gray-700',
+                coordText: 'text-yellow-600',
+            },
+            greyscale: {
+                name: 'Greyscale',
+                boardBg: 'bg-gray-600',
+                darkSquare: 'bg-gray-700',
+                lightSquare: 'bg-gray-400',
+                whitePiece: 'bg-stone-100 border-stone-300',
+                blackPiece: 'bg-stone-800 border-stone-900',
+                coordText: 'text-gray-200',
+            },
+            ocean: {
+                name: 'Ocean',
+                boardBg: 'bg-sky-800',
+                darkSquare: 'bg-cyan-900',
+                lightSquare: 'bg-cyan-200',
+                whitePiece: 'bg-slate-100 border-slate-300',
+                blackPiece: 'bg-slate-900 border-slate-700',
+                coordText: 'text-sky-400',
+            },
+        };
+
+
+        // --- GAME LOGIC (from services/gameLogic.ts) ---
+        const createInitialBoard = (variant) => {
+            const size = BOARD_SIZES[variant];
+            const pieceRows = (PIECE_COUNTS[variant] * 2) / size;
+            const board = Array(size).fill(null).map(() => Array(size).fill(null));
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if ((r + c) % 2 !== 0) {
+                        if (r < pieceRows) {
+                            board[r][c] = { color: 'black', isKing: false };
+                        } else if (r >= size - pieceRows) {
+                            board[r][c] = { color: 'white', isKing: false };
+                        }
+                    }
+                }
+            }
+            return board;
+        };
+
+        const isValidCoord = (r, c, size) => r >= 0 && r < size && c >= 0 && c < size;
+        const getPiece = (board, r, c) => isValidCoord(r, c, board.length) ? board[r][c] : null;
+
+        const findCaptureSequencesForPiece = (board, startR, startC, variant, startIsKing) => {
+            const finalSequences = [];
+            const size = board.length;
+            const startPiece = getPiece(board, startR, startC);
+            if (!startPiece) return [];
+
+            const stack = [{
+                path: [[startR, startC]],
+                capturedCoords: new Set(),
+                capturedPieces: [],
+                isKing: startIsKing
+            }];
+
+            while (stack.length > 0) {
+                const { path, capturedCoords, capturedPieces, isKing } = stack.pop();
+                const [r, c] = path[path.length - 1];
+                let foundNextJump = false;
+                const directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+
+                for (const [dr, dc] of directions) {
+                    const isForwardMove = (startPiece.color === 'white' && dr < 0) || (startPiece.color === 'black' && dr > 0);
+                    if (variant === 'american' && !isKing && !isForwardMove) continue;
+
+                    if (isKing) { // Flying King Logic
+                        for (let i = 1; i < size; i++) {
+                            const jumpOverR = r + i * dr;
+                            const jumpOverC = c + i * dc;
+                            const captureCoordStr = `${jumpOverR},${jumpOverC}`;
+                            if (!isValidCoord(jumpOverR, jumpOverC, size)) break;
+                            const jumpedPiece = getPiece(board, jumpOverR, jumpOverC);
+                            if (jumpedPiece && jumpedPiece.color === startPiece.color) break;
+                            if (jumpedPiece && jumpedPiece.color !== startPiece.color && !capturedCoords.has(captureCoordStr)) {
+                                for (let j = 1; ; j++) {
+                                    const landR = jumpOverR + j * dr;
+                                    const landC = jumpOverC + j * dc;
+                                    if (!isValidCoord(landR, landC, size) || getPiece(board, landR, landC)) break;
+                                    foundNextJump = true;
+                                    stack.push({
+                                        path: [...path, [landR, landC]],
+                                        capturedCoords: new Set(capturedCoords).add(captureCoordStr),
+                                        capturedPieces: [...capturedPieces, jumpedPiece],
+                                        isKing: true,
+                                    });
+                                }
+                                break;
+                            }
+                        }
+                    } else { // Men Logic
+                        const jumpOverR = r + dr;
+                        const jumpOverC = c + dc;
+                        const landR = r + 2 * dr;
+                        const landC = c + 2 * dc;
+                        const captureCoordStr = `${jumpOverR},${jumpOverC}`;
+                        if (isValidCoord(landR, landC, size) && !getPiece(board, landR, landC)) {
+                            const jumpedPiece = getPiece(board, jumpOverR, jumpOverC);
+                            if (jumpedPiece && jumpedPiece.color !== startPiece.color && !capturedCoords.has(captureCoordStr)) {
+                                foundNextJump = true;
+                                const kingRow = startPiece.color === 'white' ? 0 : size - 1;
+                                const becomesKing = landR === kingRow;
+                                const newPathState = {
+                                    path: [...path, [landR, landC]],
+                                    capturedCoords: new Set(capturedCoords).add(captureCoordStr),
+                                    capturedPieces: [...capturedPieces, jumpedPiece],
+                                    isKing: becomesKing
+                                };
+                                if (variant === 'american' && becomesKing) {
+                                    finalSequences.push(newPathState);
+                                } else {
+                                    stack.push(newPathState);
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!foundNextJump && path.length > 1) {
+                    finalSequences.push({ path, capturedCoords, capturedPieces, isKing });
+                }
+            }
+            const moves = finalSequences.map(seq => ({
+                path: seq.path,
+                captures: Array.from(seq.capturedCoords).map(s => s.split(',').map(Number)),
+                capturedPieces: seq.capturedPieces,
+                isKingCapture: seq.capturedPieces.some(p => p.isKing)
+            }));
+            if (moves.length > 0) {
+                const maxCaptures = Math.max(...moves.map(move => move.captures.length));
+                return moves.filter(move => move.captures.length === maxCaptures);
+            }
+            return [];
+        };
+
+        const findSimpleMovesForPiece = (board, r, c) => {
+            const size = board.length;
+            const piece = getPiece(board, r, c);
+            if (!piece) return [];
+            const moves = [];
+            const moveDirs = piece.isKing ? [[-1, -1], [-1, 1], [1, -1], [1, 1]] : (piece.color === 'white' ? [[-1, -1], [-1, 1]] : [[1, -1], [1, 1]]);
+            for (const [dr, dc] of moveDirs) {
+                if (piece.isKing) {
+                    for (let i = 1; i < size; i++) {
+                        const newR = r + i * dr;
+                        const newC = c + i * dc;
+                        if (!isValidCoord(newR, newC, size) || getPiece(board, newR, newC)) break;
+                        moves.push({ path: [[r, c], [newR, newC]], captures: [], capturedPieces: [] });
+                    }
+                } else {
+                    const newR = r + dr;
+                    const newC = c + dc;
+                    if (isValidCoord(newR, newC, size) && !getPiece(board, newR, newC)) {
+                        moves.push({ path: [[r, c], [newR, newC]], captures: [], capturedPieces: [] });
+                    }
+                }
+            }
+            return moves;
+        };
+
+        const generateAllLegalMoves = (board, player, variant) => {
+            const size = board.length;
+            let allCaptures = [];
+            let capturesByPiece = [];
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const piece = getPiece(board, r, c);
+                    if (piece && piece.color === player) {
+                        const pieceCaptures = findCaptureSequencesForPiece(board, r, c, variant, piece.isKing);
+                        if (pieceCaptures.length > 0) {
+                            capturesByPiece.push(pieceCaptures);
+                            allCaptures.push(...pieceCaptures);
+                        }
+                    }
+                }
+            }
+            if (allCaptures.length > 0) {
+                if (variant === 'international') {
+                    const maxCaptures = Math.max(...allCaptures.map(move => move.captures.length));
+                    let longestMoves = allCaptures.filter(move => move.captures.length === maxCaptures);
+                    const maxKingsCaptured = Math.max(...longestMoves.map(move => move.capturedPieces.filter(p => p.isKing).length));
+                    let bestMoves = longestMoves.filter(move => move.capturedPieces.filter(p => p.isKing).length === maxKingsCaptured);
+                    return { legalMoves: bestMoves, capturesByPiece };
+                }
+                return { legalMoves: allCaptures, capturesByPiece };
+            }
+            let simpleMoves = [];
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const piece = getPiece(board, r, c);
+                    if (piece && piece.color === player) {
+                        simpleMoves.push(...findSimpleMovesForPiece(board, r, c));
+                    }
+                }
+            }
+            return { legalMoves: simpleMoves, capturesByPiece: [] };
+        };
+
+        const applyMove = (board, move) => {
+            const newBoard = board.map(row => [...row]);
+            const [fromR, fromC] = move.path[0];
+            const [toR, toC] = move.path[move.path.length - 1];
+            const size = board.length;
+            const piece = newBoard[fromR][fromC];
+            if (!piece) return board;
+            newBoard[toR][toC] = piece;
+            newBoard[fromR][fromC] = null;
+            for (const [capR, capC] of move.captures) {
+                newBoard[capR][capC] = null;
+            }
+            const kingRow = piece.color === 'white' ? 0 : size - 1;
+            if (toR === kingRow && !piece.isKing) {
+                newBoard[toR][toC].isKing = true;
+            }
+            return newBoard;
+        };
+
+        const checkGameOver = (board, currentPlayer, variant) => {
+            const opponent = currentPlayer === 'white' ? 'black' : 'white';
+            let currentPlayerPieces = 0, opponentPieces = 0;
+            board.forEach(row => row.forEach(piece => {
+                if (piece) {
+                    if (piece.color === currentPlayer) currentPlayerPieces++;
+                    else opponentPieces++;
+                }
+            }));
+            if (opponentPieces === 0) return currentPlayer === 'white' ? 'white_wins' : 'black_wins';
+            if (currentPlayerPieces === 0) return opponent === 'white' ? 'white_wins' : 'black_wins';
+            const { legalMoves } = generateAllLegalMoves(board, currentPlayer, variant);
+            if (legalMoves.length === 0) return opponent === 'white' ? 'white_wins' : 'black_wins';
+            return 'playing';
+        };
+        
+        const toNotation = (move, size) => {
+            const colToChar = (c) => String.fromCharCode('A'.charCodeAt(0) + c);
+            const rowToNum = (r) => size - r;
+            const fromPos = move.path[0];
+            const toPos = move.path[move.path.length - 1];
+            const fromStr = `${colToChar(fromPos[1])}${rowToNum(fromPos[0])}`;
+            const toStr = `${colToChar(toPos[1])}${rowToNum(toPos[0])}`;
+            return move.captures.length > 0 ? `${fromStr}x${toStr}` : `${fromStr}-${toStr}`;
+        }
+
+        // --- AI LOGIC (from services/ai.ts) ---
+        const callGemini = async (payload) => {
+            console.log("Calling Gemini API with payload:", payload);
+            if (!process.env.API_KEY) {
+                throw new Error("API_KEY environment variable not set.");
+            }
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+            const boardToString = (board) => {
+                return board.map((row, r) =>
+                    row.map((p, c) => {
+                        if (!p) return '.';
+                        if (p.color === 'white') return p.isKing ? 'W' : 'w';
+                        return p.isKing ? 'B' : 'b';
+                    }).join(' ')
+                ).join('\n');
+            };
+
+            const rules = {
+                american: "American Draughts (8x8 board). Men move and capture forward diagonally. Kings move and capture one step diagonally in any direction. Captures are mandatory. If multiple capture sequences are available, any can be chosen. A man's turn ends if it becomes a king during a capture.",
+                international: "International Draughts (10x10 board). Men move forward diagonally but capture forwards and backwards. Kings are 'flying kings' and can move/capture any number of empty squares along a diagonal. Captures are mandatory. The player MUST choose a move that captures the maximum possible number of pieces. If there's a tie in number of pieces, capturing kings is preferred."
+            };
+
+            const systemInstruction = `You are a world-class checkers/draughts engine. Your goal is to play the best possible move. You will receive the board state, the current player, and the game variant. Follow the rules precisely, especially mandatory captures. Your response must be only a valid JSON object representing the move.`;
+            
+            const contents = `
+                Game Variant: ${payload.variant}
+                Current Player to move: ${payload.color}
+                Rules: ${rules[payload.variant]}
+
+                Board State (row 0 is black's side, coordinates are [row, col]):
+                ${boardToString(payload.board)}
+
+                Analyze all legal moves for '${payload.color}' and provide the best one. Your response must be a single JSON object conforming to the provided schema. Do not output any other text or explanations.
+            `;
+
+            try {
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: contents,
+                    config: {
+                        systemInstruction: systemInstruction,
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: Type.OBJECT,
+                            properties: {
+                                path: {
+                                    type: Type.ARRAY,
+                                    description: "An array of [row, col] coordinates representing the move path from start to end.",
+                                    items: {
+                                        type: Type.ARRAY,
+                                        items: { type: Type.NUMBER }
+                                    }
+                                },
+                                captures: {
+                                    type: Type.ARRAY,
+                                    description: "An array of [row, col] coordinates of captured pieces. Empty if it's not a capture move.",
+                                    items: {
+                                        type: Type.ARRAY,
+                                        items: { type: Type.NUMBER }
+                                    }
+                                }
+                            },
+                            required: ["path", "captures"],
+                        }
+                    }
+                });
+                const move = JSON.parse(response.text);
+                
+                // Gemini might not return the full path for a multi-jump, just start and end.
+                // We find the matching legal move to ensure full validity.
+                const legalMoves = generateAllLegalMoves(payload.board, payload.color, payload.variant).legalMoves;
+                const geminiFrom = move.path[0];
+                const geminiTo = move.path[move.path.length - 1];
+
+                const matchingMove = legalMoves.find(m => {
+                     const legalFrom = m.path[0];
+                     const legalTo = m.path[m.path.length - 1];
+                     return legalFrom[0] === geminiFrom[0] && legalFrom[1] === geminiFrom[1] &&
+                            legalTo[0] === geminiTo[0] && legalTo[1] === geminiTo[1];
+                });
+
+                if (matchingMove) {
+                    console.log("Gemini move validated and matched:", matchingMove);
+                    return matchingMove;
+                } else {
+                     console.error("Gemini proposed an illegal or unmatchable move:", move);
+                     throw new Error("Gemini move is illegal.");
+                }
+
+            } catch (e) {
+                console.error("Error calling Gemini API:", e);
+                throw e; // Propagate error to be caught by the main handler
+            }
+        };
+
+        const fallbackAiMove = (board, variant, color) => {
+            const { legalMoves } = generateAllLegalMoves(board, color, variant);
+            if (legalMoves.length === 0) return null;
+            const randomIndex = Math.floor(Math.random() * legalMoves.length);
+            return legalMoves[randomIndex];
+        };
+
+        const geminiMove = async (board, variant, color) => {
+            const payload = { board, variant, color };
+            try {
+                return await callGemini(payload);
+            } catch (error) {
+                console.error("Gemini move failed, using fallback directly:", error);
+                const fallback = fallbackAiMove(board, variant, color);
+                if (!fallback) throw new Error("Critical: Fallback AI also failed to find a move.");
+                addLogEntry("Gemini API failed. Using fallback AI.");
+                return fallback;
+            }
+        };
+
+        // --- STATE & DOM ---
+        let state;
+        const rootEl = document.getElementById('root');
+
+        function setState(updater) {
+            const newState = typeof updater === 'function' ? updater(state) : updater;
+            state = { ...state, ...newState };
+            renderApp();
+        }
+        
+        const addLogEntry = (log) => {
+            setState(s => ({ debugLog: [...s.debugLog, log] }));
+        }
+
+        // --- EVENT HANDLERS ---
+        const handleSquareClick = (r, c) => {
+            if (state.status !== 'playing') return;
+            const piece = getPiece(state.board, r, c);
+
+            if (state.selectedPiece) {
+                const move = state.legalMoves.find(m => {
+                    const from = m.path[0];
+                    const to = m.path[m.path.length - 1];
+                    return from[0] === state.selectedPiece[0] && from[1] === state.selectedPiece[1] && to[0] === r && to[1] === c;
+                });
+                if (move) {
+                    handleMove(move);
+                    return;
+                }
+            }
+            if (piece && piece.color === state.currentPlayer) {
+                const pieceHasMoves = state.legalMoves.some(m => m.path[0][0] === r && m.path[0][1] === c);
+                if (pieceHasMoves) {
+                    setState({ selectedPiece: [r, c] });
+                } else {
+                    setState({ selectedPiece: null });
+                    addLogEntry(`Piece at [${r},${c}] has no legal moves.`);
+                }
+            } else {
+                setState({ selectedPiece: null });
+            }
+        };
+
+        const completeAnimationStep = () => {
+            if (!state.animatingMove) return;
+
+            const { move, step } = state.animatingMove;
+            const nextStep = step + 1;
+
+            if (nextStep < move.path.length - 1) {
+                setState(s => ({ ...s, animatingMove: { ...s.animatingMove, step: nextStep } }));
+            } else {
+                const boardAfterMove = applyMove(state.board, move);
+                const nextPlayer = state.currentPlayer === 'white' ? 'black' : 'white';
+                const gameStatus = checkGameOver(boardAfterMove, nextPlayer, state.variant);
+                const moveNotation = toNotation(move, BOARD_SIZES[state.variant]);
+                
+                const newHistory = [...state.boardHistory, boardAfterMove];
+                const newMoveHistory = [...state.moveHistory, moveNotation];
+                const newLog = [...state.debugLog, `${state.moveHistory.length + 1}. ${state.currentPlayer} plays ${moveNotation}`];
+
+                setState({
+                    board: boardAfterMove,
+                    currentPlayer: nextPlayer,
+                    status: gameStatus,
+                    selectedPiece: null,
+                    boardHistory: newHistory,
+                    moveHistory: newMoveHistory,
+                    debugLog: newLog,
+                    animatingMove: null,
+                });
+                
+                // Must be done after state is updated
+                updateLegalMoves(boardAfterMove, nextPlayer, state.variant);
+                triggerAiMove(gameStatus, nextPlayer, boardAfterMove, state.variant, state.mode);
+            }
+        };
+
+        const handleMove = (move) => {
+            const piece = getPiece(state.board, move.path[0][0], move.path[0][1]);
+            if (!piece) return;
+            setState({
+                status: 'animating',
+                selectedPiece: null,
+                animatingMove: { move, piece, step: 0 }
+            });
+        };
+        
+        const triggerAiMove = (status, player, board, variant, mode) => {
+            const isAiTurn = mode === 'pvg' && player === 'black' && status === 'playing';
+            if (isAiTurn) {
+                setTimeout(async () => {
+                    try {
+                        const move = await geminiMove(board, variant, player);
+                        handleMove(move);
+                    } catch (error) {
+                        console.error("AI move failed:", error);
+                        setState({ status: 'white_wins' });
+                        addLogEntry("Error: AI failed to move.");
+                    }
+                }, 500);
+            }
+        };
+
+        const handleNewGame = (variant, mode) => {
+            const newBoard = createInitialBoard(variant);
+            const initialState = {
+                variant,
+                mode,
+                board: newBoard,
+                currentPlayer: 'white',
+                status: 'playing',
+                selectedPiece: null,
+                legalMoves: [],
+                moveHistory: [],
+                boardHistory: [newBoard],
+                showCoordinates: true,
+                debugLog: [`New game started. Variant: ${variant}, Mode: ${mode}.`],
+                availableCaptureSequences: [],
+                animatingMove: null,
+                theme: state?.theme || 'classic' // Persist theme across new games
+            };
+            state = initialState; // Direct set to avoid render before full init
+            updateLegalMoves(state.board, state.currentPlayer, state.variant);
+            renderApp();
+        };
+
+        const handleUndo = () => {
+            if (state.boardHistory.length <= 1 || state.status === 'animating') return;
+            const movesToUndo = state.mode === 'pvg' && state.currentPlayer === 'white' ? 2 : 1;
+            
+            if (state.boardHistory.length <= movesToUndo) return;
+
+            const newBoardHistory = state.boardHistory.slice(0, -movesToUndo);
+            const newMoveHistory = state.moveHistory.slice(0, -movesToUndo);
+            
+            setState({
+                board: newBoardHistory[newBoardHistory.length - 1],
+                currentPlayer: 'white',
+                status: 'playing',
+                selectedPiece: null,
+                boardHistory: newBoardHistory,
+                moveHistory: newMoveHistory,
+            });
+            addLogEntry("Undo last move(s).");
+            updateLegalMoves(newBoardHistory[newBoardHistory.length - 1], 'white', state.variant);
+        };
+        
+        const updateLegalMoves = (board, currentPlayer, variant) => {
+             if (state.status === 'animating') return;
+             const { legalMoves, capturesByPiece } = generateAllLegalMoves(board, currentPlayer, variant);
+             setState(s => ({...s, legalMoves, availableCaptureSequences: capturesByPiece}));
+        };
+
+        const handleThemeChange = (newTheme) => {
+            setState({ theme: newTheme });
+        };
+
+        // --- RENDER FUNCTIONS ---
+        function renderApp() {
+            const { variant, mode, theme, currentPlayer, status, moveHistory, board, selectedPiece, legalMoves, showCoordinates, animatingMove, debugLog, availableCaptureSequences } = state;
+            const size = board.length;
+            const themeColors = THEMES[theme];
+
+            const getStatusMessage = () => {
+                switch (status) {
+                    case 'white_wins': return 'White Wins!';
+                    case 'black_wins': return 'Black Wins!';
+                    case 'draw': return 'Draw!';
+                    case 'animating': return `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} is moving...`;
+                    case 'playing': return `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn`;
+                }
+            };
+
+            const highlightedMoves = legalMoves
+                .filter(move => selectedPiece && move.path[0][0] === selectedPiece[0] && move.path[0][1] === selectedPiece[1])
+                .map(move => `${move.path[move.path.length-1][0]},${move.path[move.path.length-1][1]}`);
+
+            const getRankCoord = (r) => size - r;
+            const getFileCoord = (c) => String.fromCharCode(65 + c);
+            
+            const isAnimating = !!animatingMove;
+            const animationStartPos = animatingMove ? animatingMove.move.path[0] : null;
+
+            rootEl.innerHTML = `
+                <main class="w-full max-w-4xl mx-auto">
+                    <!-- Controls -->
+                    <div class="p-4 space-y-4">
+                      <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
+                        <div class="flex items-center space-x-2">
+                          <label for="variant-select" class="text-sm text-gray-400">Variant:</label>
+                          <select id="variant-select" class="bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="american" ${variant === 'american' ? 'selected' : ''}>American (8x8)</option>
+                            <option value="international" ${variant === 'international' ? 'selected' : ''}>International (10x10)</option>
+                          </select>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                          <label for="mode-select" class="text-sm text-gray-400">Mode:</label>
+                          <select id="mode-select" class="bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="pvp" ${mode === 'pvp' ? 'selected' : ''}>Player vs Player</option>
+                            <option value="pvg" ${mode === 'pvg' ? 'selected' : ''}>Player vs Gemini</option>
+                          </select>
+                        </div>
+                         <div class="flex items-center space-x-2">
+                          <label for="theme-select" class="text-sm text-gray-400">Theme:</label>
+                          <select id="theme-select" class="bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                            ${Object.keys(THEMES).map(themeKey => `
+                                <option value="${themeKey}" ${theme === themeKey ? 'selected' : ''}>${THEMES[themeKey].name}</option>
+                            `).join('')}
+                          </select>
+                        </div>
+                      </div>
+                      <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
+                        <button id="new-game-btn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm font-medium transition">New Game</button>
+                        <button id="undo-btn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm font-medium transition" ${moveHistory.length === 0 || status === 'animating' ? 'disabled' : ''}>Undo</button>
+                        <button id="coords-btn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm font-medium transition">Coords</button>
+                        <button id="rules-btn" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm font-medium transition">Rules</button>
+                      </div>
+                      <div class="text-center text-lg font-semibold min-h-[28px]">
+                        ${getStatusMessage()}
+                      </div>
+                    </div>
+
+                    <!-- Board -->
+                    <div id="board-container" class="mt-4 flex flex-col aspect-square w-full max-w-xl lg:max-w-2xl mx-auto shadow-2xl ${themeColors.boardBg} p-2 sm:p-4 rounded-lg transition-colors duration-300">
+                        <div class="relative">
+                            <div class="grid grid-cols-${size}" style="grid-template-rows: repeat(${size}, 1fr)">
+                                ${board.map((row, r) => row.map((square, c) => {
+                                    const isDark = (r + c) % 2 !== 0;
+                                    const bgColor = isDark ? themeColors.darkSquare : themeColors.lightSquare;
+                                    const isSelected = selectedPiece && selectedPiece[0] === r && selectedPiece[1] === c;
+                                    const isHighlighted = highlightedMoves.includes(`${r},${c}`);
+                                    const isPieceHidden = isAnimating && animationStartPos && animationStartPos[0] === r && animationStartPos[1] === c;
+                                    const whitePieceColor = themeColors.whitePiece;
+                                    const blackPieceColor = themeColors.blackPiece;
+                                    const coordColor = themeColors.coordText;
+
+                                    return `
+                                        <div data-r="${r}" data-c="${c}" class="square relative aspect-square ${bgColor} transition-colors duration-300">
+                                            ${showCoordinates && c === 0 ? `<span class="absolute left-1 top-1 text-xs ${coordColor} font-bold pointer-events-none">${getRankCoord(r)}</span>` : ''}
+                                            ${showCoordinates && r === size - 1 ? `<span class="absolute bottom-1 right-1 text-xs ${coordColor} font-bold pointer-events-none">${getFileCoord(c)}</span>` : ''}
+                                            ${isSelected ? '<div class="absolute inset-0 bg-green-500 opacity-50 pointer-events-none"></div>' : ''}
+                                            ${!isPieceHidden && square ? `
+                                                <div class="piece absolute w-[85%] h-[85%] top-[7.5%] left-[7.5%] rounded-full ${square.color === 'white' ? whitePieceColor : blackPieceColor} border-2 flex items-center justify-center shadow-lg ${square.isKing ? 'king' : ''} pointer-events-none transition-colors duration-300"></div>
+                                            ` : ''}
+                                            ${isHighlighted ? '<div class="highlight-move absolute inset-0 flex items-center justify-center pointer-events-none"></div>' : ''}
+                                        </div>
+                                    `;
+                                }).join('')).join('')}
+                            </div>
+                            ${animatingMove ? `<div id="animating-piece-wrapper" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>` : ''}
+                        </div>
+                    </div>
+                </main>
+                 <!-- Debug Panel -->
+                <div class="fixed bottom-0 left-0 right-0 z-10 text-xs">
+                    <button id="debug-toggle" class="w-full bg-gray-900 text-gray-300 py-1 px-4 text-center font-mono">▲ Dev Panel</button>
+                    <div id="debug-content" class="hidden bg-gray-900 bg-opacity-90 p-4 h-64 overflow-y-auto">
+                        <h4 class="font-bold text-gray-200 border-b border-gray-600 mb-2">Move Log & Explanations</h4>
+                        <div class="font-mono text-gray-400">
+                           ${debugLog.map(log => `<div>${log}</div>`).join('')}
+                        </div>
+                         ${availableCaptureSequences.length > 0 ? `
+                             <div class="mt-2">
+                                <h5 class="font-bold text-gray-300">Available Capture Sequences (${variant}):</h5>
+                                <ul class="list-disc list-inside">
+                                ${availableCaptureSequences.map(sequence => `
+                                    <li>Path from [${sequence[0].path[0].join(',')}] - Captures: ${sequence[0].captures.length}</li>
+                                `).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- Rules Modal -->
+                <div id="rules-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 hidden">
+                    <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full">
+                        <h3 id="rules-title" class="text-xl font-bold mb-4"></h3>
+                        <p id="rules-text" class="text-gray-300"></p>
+                        <button id="rules-close-btn" class="mt-6 w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md">Close</button>
+                    </div>
+                </div>
+            `;
+
+            // Handle animation separately as it needs direct DOM manipulation
+            if (animatingMove) {
+                const wrapper = document.getElementById('animating-piece-wrapper');
+                if (wrapper) {
+                    const from = animatingMove.move.path[animatingMove.step];
+                    const to = animatingMove.move.path[animatingMove.step + 1];
+                    const pieceData = animatingMove.piece;
+                    const whitePieceColor = themeColors.whitePiece;
+                    const blackPieceColor = themeColors.blackPiece;
+
+                    const pieceEl = document.createElement('div');
+                    pieceEl.className = 'absolute top-0 left-0 animating-piece';
+                    pieceEl.style.width = `${100 / size}%`;
+                    pieceEl.style.height = `${100 / size}%`;
+                    pieceEl.style.transform = `translate(${from[1] * 100}%, ${from[0] * 100}%)`;
+                    pieceEl.innerHTML = `<div class="w-full h-full relative"><div class="piece absolute w-[85%] h-[85%] top-[7.5%] left-[7.5%] rounded-full ${pieceData.color === 'white' ? whitePieceColor : blackPieceColor} border-2 flex items-center justify-center shadow-lg ${pieceData.isKing ? 'king' : ''}"></div></div>`;
+                    
+                    wrapper.appendChild(pieceEl);
+
+                    requestAnimationFrame(() => {
+                        pieceEl.style.transform = `translate(${to[1] * 100}%, ${to[0] * 100}%)`;
+                    });
+
+                    pieceEl.addEventListener('transitionend', completeAnimationStep, { once: true });
+                }
+            }
+
+            // Add event listeners
+            document.getElementById('variant-select').addEventListener('change', (e) => handleNewGame(e.target.value, state.mode));
+            document.getElementById('mode-select').addEventListener('change', (e) => handleNewGame(state.variant, e.target.value));
+            document.getElementById('theme-select').addEventListener('change', (e) => handleThemeChange(e.target.value));
+            document.getElementById('new-game-btn').addEventListener('click', () => handleNewGame(state.variant, state.mode));
+            document.getElementById('undo-btn').addEventListener('click', handleUndo);
+            document.getElementById('coords-btn').addEventListener('click', () => setState({ showCoordinates: !state.showCoordinates }));
+            
+            document.querySelectorAll('.square').forEach(sq => {
+                sq.addEventListener('click', () => handleSquareClick(parseInt(sq.dataset.r), parseInt(sq.dataset.c)));
+            });
+
+            const rulesModal = document.getElementById('rules-modal');
+            document.getElementById('rules-btn').addEventListener('click', () => {
+                 const rules = {
+                    american: `12 pieces per side on an 8x8 board. Men move and capture forward one diagonal step. Kings move and capture one diagonal step in any direction. Captures are mandatory, but any capture sequence can be chosen. A man's turn ends immediately upon being crowned.`,
+                    international: `20 pieces per side on a 10x10 board. Men move forward but can capture forwards and backwards. Kings are 'flying kings' and can move/capture any distance along a diagonal. Captures are mandatory, and you MUST choose a sequence that captures the maximum number of opponent pieces. Tie-breaker: prefer capturing more kings.`
+                };
+                document.getElementById('rules-title').innerText = `Rules: ${variant === 'american' ? 'American' : 'International'} Draughts`;
+                document.getElementById('rules-text').innerText = rules[variant];
+                rulesModal.classList.remove('hidden');
+            });
+            document.getElementById('rules-close-btn').addEventListener('click', () => rulesModal.classList.add('hidden'));
+            rulesModal.addEventListener('click', () => rulesModal.classList.add('hidden'));
+            rulesModal.firstElementChild.addEventListener('click', (e) => e.stopPropagation());
+            
+            const debugContent = document.getElementById('debug-content');
+            const debugToggle = document.getElementById('debug-toggle');
+            debugToggle.addEventListener('click', () => {
+                const isHidden = debugContent.classList.toggle('hidden');
+                debugToggle.innerText = isHidden ? '▲ Dev Panel' : '▼ Dev Panel';
+            });
+        }
+
+        // --- INITIALIZATION ---
+        handleNewGame('american', 'pvp');
+
+    </script>
+</body>
+</html>
