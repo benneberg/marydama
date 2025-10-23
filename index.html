@@ -323,8 +323,14 @@
                 international: "International Draughts (10x10 board). Men move forward diagonally but capture forwards and backwards. Kings are 'flying kings' and can move/capture any number of empty squares along a diagonal. Captures are mandatory. The player MUST choose a move that captures the maximum possible number of pieces. If there's a tie in number of pieces, capturing kings is preferred."
             };
 
-            const systemInstruction = `You are a world-class checkers/draughts engine. Your goal is to play the best possible move. You will receive the board state, the current player, and the game variant. Follow the rules precisely, especially mandatory captures. Your response must be only a valid JSON object representing the move.`;
+            const systemInstructions = {
+                easy: "You are a beginner checkers/draughts player. Your goal is to make a legal move, but not necessarily the best one. Sometimes make a mistake or a suboptimal move. Your response must be only a valid JSON object representing the move.",
+                medium: "You are a world-class checkers/draughts engine. Your goal is to play the best possible move. You will receive the board state, the current player, and the game variant. Follow the rules precisely, especially mandatory captures. Your response must be only a valid JSON object representing the move.",
+                hard: "You are a world-class checkers/draughts grandmaster. Your goal is to play the absolute best possible move, thinking multiple steps ahead. Analyze positional advantages, piece structures, and long-term threats. Follow the rules precisely, especially mandatory captures. Your response must be only a valid JSON object representing the move.",
+            };
             
+            const systemInstruction = systemInstructions[payload.difficulty];
+
             const contents = `
                 Game Variant: ${payload.variant}
                 Current Player to move: ${payload.color}
@@ -333,7 +339,7 @@
                 Board State (row 0 is black's side, coordinates are [row, col]):
                 ${boardToString(payload.board)}
 
-                Analyze all legal moves for '${payload.color}' and provide the best one. Your response must be a single JSON object conforming to the provided schema. Do not output any other text or explanations.
+                Analyze all legal moves for '${payload.color}' and provide the best one based on your skill level. Your response must be a single JSON object conforming to the provided schema. Do not output any other text or explanations.
             `;
 
             try {
@@ -387,6 +393,10 @@
                     return matchingMove;
                 } else {
                      console.error("Gemini proposed an illegal or unmatchable move:", move);
+                     // If the AI move is illegal on 'easy', just pick a random one.
+                     if (payload.difficulty === 'easy' && legalMoves.length > 0) {
+                        return legalMoves[Math.floor(Math.random() * legalMoves.length)];
+                     }
                      throw new Error("Gemini move is illegal.");
                 }
 
@@ -403,8 +413,8 @@
             return legalMoves[randomIndex];
         };
 
-        const geminiMove = async (board, variant, color) => {
-            const payload = { board, variant, color };
+        const geminiMove = async (board, variant, color, difficulty) => {
+            const payload = { board, variant, color, difficulty };
             try {
                 return await callGemini(payload);
             } catch (error) {
@@ -477,7 +487,7 @@
                     const gameStatus = checkGameOver(boardAfterMove, nextPlayer, state.variant);
                     setState({ board: boardAfterMove, currentPlayer: nextPlayer, status: gameStatus, selectedPiece: null, animatingMove: null });
                     updateLegalMoves(boardAfterMove, nextPlayer, state.variant);
-                    triggerAiMove(gameStatus, nextPlayer, boardAfterMove, state.variant, state.mode);
+                    triggerAiMove(gameStatus, nextPlayer, boardAfterMove, state.variant, state.mode, state.difficulty);
                     return;
                 }
 
@@ -516,7 +526,7 @@
                 });
                 
                 updateLegalMoves(boardAfterMove, nextPlayer, state.variant);
-                triggerAiMove(gameStatus, nextPlayer, boardAfterMove, state.variant, state.mode);
+                triggerAiMove(gameStatus, nextPlayer, boardAfterMove, state.variant, state.mode, state.difficulty);
             }
         };
 
@@ -530,12 +540,12 @@
             });
         };
         
-        const triggerAiMove = (status, player, board, variant, mode) => {
+        const triggerAiMove = (status, player, board, variant, mode, difficulty) => {
             const isAiTurn = mode === 'pvg' && player === 'black' && status === 'playing';
             if (isAiTurn) {
                 setTimeout(async () => {
                     try {
-                        const move = await geminiMove(board, variant, player);
+                        const move = await geminiMove(board, variant, player, difficulty);
                         handleMove(move);
                     } catch (error) {
                         console.error("AI move failed:", error);
@@ -546,11 +556,12 @@
             }
         };
 
-        const handleNewGame = (variant, mode) => {
+        const handleNewGame = (variant, mode, difficulty) => {
             const newBoard = createInitialBoard(variant);
             const initialState = {
                 variant,
                 mode,
+                difficulty: difficulty || 'medium',
                 board: newBoard,
                 currentPlayer: 'white',
                 status: 'playing',
@@ -599,10 +610,14 @@
         const handleThemeChange = (newTheme) => {
             setState({ theme: newTheme });
         };
+        
+        const handleDifficultyChange = (newDifficulty) => {
+            handleNewGame(state.variant, state.mode, newDifficulty);
+        }
 
         // --- RENDER FUNCTIONS ---
         function renderApp() {
-            const { variant, mode, theme, currentPlayer, status, moveHistory, board, selectedPiece, legalMoves, showCoordinates, animatingMove, debugLog, availableCaptureSequences } = state;
+            const { variant, mode, difficulty, theme, currentPlayer, status, moveHistory, board, selectedPiece, legalMoves, showCoordinates, animatingMove, debugLog, availableCaptureSequences } = state;
             const size = board.length;
             const themeColors = THEMES[theme];
 
@@ -645,6 +660,16 @@
                             <option value="pvg" ${mode === 'pvg' ? 'selected' : ''}>Player vs Gemini</option>
                           </select>
                         </div>
+                        ${mode === 'pvg' ? `
+                        <div class="flex items-center space-x-2">
+                          <label for="difficulty-select" class="text-sm text-gray-400">Difficulty:</label>
+                          <select id="difficulty-select" class="bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="easy" ${difficulty === 'easy' ? 'selected' : ''}>Easy</option>
+                            <option value="medium" ${difficulty === 'medium' ? 'selected' : ''}>Medium</option>
+                            <option value="hard" ${difficulty === 'hard' ? 'selected' : ''}>Hard</option>
+                          </select>
+                        </div>
+                        ` : ''}
                          <div class="flex items-center space-x-2">
                           <label for="theme-select" class="text-sm text-gray-400">Theme:</label>
                           <select id="theme-select" class="bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
@@ -755,12 +780,19 @@
             }
 
             // Add event listeners
-            document.getElementById('variant-select').addEventListener('change', (e) => handleNewGame(e.target.value, state.mode));
-            document.getElementById('mode-select').addEventListener('change', (e) => handleNewGame(state.variant, e.target.value));
+            document.getElementById('variant-select').addEventListener('change', (e) => handleNewGame(e.target.value, state.mode, state.difficulty));
+            document.getElementById('mode-select').addEventListener('change', (e) => handleNewGame(state.variant, e.target.value, state.difficulty));
             document.getElementById('theme-select').addEventListener('change', (e) => handleThemeChange(e.target.value));
-            document.getElementById('new-game-btn').addEventListener('click', () => handleNewGame(state.variant, state.mode));
+            document.getElementById('new-game-btn').addEventListener('click', () => handleNewGame(state.variant, state.mode, state.difficulty));
             document.getElementById('undo-btn').addEventListener('click', handleUndo);
             document.getElementById('coords-btn').addEventListener('click', () => setState({ showCoordinates: !state.showCoordinates }));
+            
+            if (state.mode === 'pvg') {
+                const difficultySelect = document.getElementById('difficulty-select');
+                if (difficultySelect) {
+                    difficultySelect.addEventListener('change', (e) => handleDifficultyChange(e.target.value));
+                }
+            }
             
             document.querySelectorAll('.square').forEach(sq => {
                 sq.addEventListener('click', () => handleSquareClick(parseInt(sq.dataset.r), parseInt(sq.dataset.c)));
@@ -789,7 +821,7 @@
         }
 
         // --- INITIALIZATION ---
-        handleNewGame('american', 'pvp');
+        handleNewGame('american', 'pvp', 'medium');
 
     </script>
 </body>
