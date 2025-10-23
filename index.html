@@ -465,9 +465,36 @@
             const { move, step } = state.animatingMove;
             const nextStep = step + 1;
 
-            if (nextStep < move.path.length - 1) {
-                setState(s => ({ ...s, animatingMove: { ...s.animatingMove, step: nextStep } }));
-            } else {
+            if (nextStep < move.path.length - 1) { // It's a multi-jump, and this isn't the last leg.
+                state.animatingMove.step = nextStep; // Update state directly to avoid re-render
+                
+                const pieceEl = document.querySelector('#animating-piece-wrapper .animating-piece');
+                if (!pieceEl) {
+                    console.error("Animating piece lost during multi-jump! Aborting animation.");
+                    // As a fallback, just apply the final state of the move
+                    const boardAfterMove = applyMove(state.board, move);
+                    const nextPlayer = state.currentPlayer === 'white' ? 'black' : 'white';
+                    const gameStatus = checkGameOver(boardAfterMove, nextPlayer, state.variant);
+                    setState({ board: boardAfterMove, currentPlayer: nextPlayer, status: gameStatus, selectedPiece: null, animatingMove: null });
+                    updateLegalMoves(boardAfterMove, nextPlayer, state.variant);
+                    triggerAiMove(gameStatus, nextPlayer, boardAfterMove, state.variant, state.mode);
+                    return;
+                }
+
+                const from = move.path[nextStep];
+                const to = move.path[nextStep + 1];
+                
+                pieceEl.style.transition = 'none';
+                pieceEl.style.transform = `translate(${from[1] * 100}%, ${from[0] * 100}%)`;
+                
+                // Using RAF to ensure the 'snap' renders before the next transition starts
+                requestAnimationFrame(() => {
+                    pieceEl.addEventListener('transitionend', completeAnimationStep, { once: true });
+                    pieceEl.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+                    pieceEl.style.transform = `translate(${to[1] * 100}%, ${to[0] * 100}%)`;
+                });
+                
+            } else { // This was the last leg of the animation. Finalize the move.
                 const boardAfterMove = applyMove(state.board, move);
                 const nextPlayer = state.currentPlayer === 'white' ? 'black' : 'white';
                 const gameStatus = checkGameOver(boardAfterMove, nextPlayer, state.variant);
@@ -488,7 +515,6 @@
                     animatingMove: null,
                 });
                 
-                // Must be done after state is updated
                 updateLegalMoves(boardAfterMove, nextPlayer, state.variant);
                 triggerAiMove(gameStatus, nextPlayer, boardAfterMove, state.variant, state.mode);
             }
