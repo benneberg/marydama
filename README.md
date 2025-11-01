@@ -168,6 +168,3 @@ This project is open-source under the **MIT License**.
 Enjoy **MaryDama Checkers / Draughts**! Play, analyze, and master your checkers strategy with AI-assisted gameplay.
 
 ```
-
-Do you want me to do that next?
-```
