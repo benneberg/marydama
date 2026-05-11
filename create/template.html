@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[STORY TITLE] — Visual Novel Book</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Serif+JP:wght@300;400;700&family=Manrope:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --neon: #0da6f2;
+  --neon-pink: #ff2d78;
+  --neon-green: #39ff14;
+  --ink: #101c22;
+  --paper: #f5f7f8;
+  --mid: #1e2f38;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--ink);color:#e8ecef;font-family:'Manrope',sans-serif;min-height:100vh;overflow-x:hidden;}
+.fd{font-family:'Bebas Neue',cursive;}
+.fb{font-family:'Noto Serif JP',serif;}
+
+/* Scanlines */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px);pointer-events:none;z-index:9999;}
+
+/* Screens */
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* Reader */
+#screen-reader{overflow-y:auto;max-height:100vh;}
+
+/* Neon */
+.nt{color:var(--neon);text-shadow:0 0 10px var(--neon),0 0 30px rgba(13,166,242,0.4);}
+.ng{box-shadow:0 0 30px rgba(13,166,242,0.2),0 0 60px rgba(13,166,242,0.1);}
+.nb{border:1px solid rgba(13,166,242,0.25);}
+
+/* Reading */
+.rtext{line-height:1.9;letter-spacing:0.02em;font-size:1.05rem;}
+.rtext p{color:#dde8ef;margin-bottom:1.5rem;}
+.dropcap::first-letter{font-family:'Bebas Neue',cursive;font-size:4.5rem;line-height:0.8;float:left;margin-right:0.12em;margin-top:0.08em;color:#1af0ff;text-shadow:0 0 15px rgba(13,166,242,0.8);}
+.squote{border-left:3px solid var(--neon);background:rgba(13,166,242,0.08);padding:1.25rem 1.5rem;margin:2rem 0;border-radius:0 8px 8px 0;font-style:italic;color:#e2edf4;font-size:1.05rem;}
+
+/* Progress */
+#gbar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--neon),var(--neon-pink));z-index:100;transition:width 0.2s;width:0%;}
+
+/* Cards */
+.char-img{width:100%;height:280px;object-fit:cover;object-position:top;display:block;}
+.scene-img{width:100%;border-radius:12px;margin:1.5rem 0;border:1px solid rgba(13,166,242,0.15);}
+
+/* Buttons & UI */
+.btn-primary{background:var(--neon);color:#0a1520;font-weight:800;padding:1rem 2rem;border-radius:10px;border:none;cursor:pointer;font-family:'Manrope',sans-serif;box-shadow:0 0 20px rgba(13,166,242,0.4);width:100%;max-width:280px;}
+.btn-ghost{background:transparent;color:var(--neon);font-weight:600;padding:0.85rem 2rem;border-radius:10px;border:1px solid rgba(13,166,242,0.4);cursor:pointer;width:100%;max-width:280px;}
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(16,28,34,0.97);backdrop-filter:blur(10px);border-top:1px solid rgba(13,166,242,0.1);padding:0.75rem 1rem 1.25rem;}
+.content-wrap{max-width:640px;margin:0 auto;width:100%;padding:1.5rem 1rem 6rem;}
+
+/* Lightbox */
+#lightbox{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.95);display:none;align-items:center;justify-content:center;padding:1rem;}
+#lightbox.open{display:flex;}
+#lightbox img{max-width:100%;max-height:90vh;border-radius:12px;object-fit:contain;}
+
+:: -webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--ink);}
+::-webkit-scrollbar-thumb{background:rgba(13,166,242,0.3);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div id="gbar"></div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lb-img" src="" alt="">
+</div>
+
+<!-- ==================== WELCOME SCREEN ==================== -->
+<div id="screen-welcome" class="screen active">
+  <div class="content-wrap" style="text-align:center;padding-top:15vh;">
+    <h1 class="fd" style="font-size:3.5rem;line-height:1;color:white;">[STORY TITLE]</h1>
+    <p class="nt" style="font-size:1.4rem;margin:1rem 0;">[SUBTITLE / TAGLINE]</p>
+    <p style="max-width:500px;margin:2rem auto;color:#aaa;">[Short captivating description]</p>
+    <button class="btn-primary" onclick="goTo('hub')">ENTER STORY</button>
+  </div>
+</div>
+
+<!-- ==================== HUB ==================== -->
+<div id="screen-hub" class="screen">
+  <div class="shead"><div class="shead-inner"><button class="back-btn" onclick="goTo('welcome')">←</button><h2 id="hub-title" class="fd">CHAPTERS</h2></div></div>
+  <div class="content-wrap" id="chapter-list"></div>
+</div>
+
+<!-- ==================== CHARACTERS ==================== -->
+<div id="screen-cast" class="screen">
+  <div class="shead"><div class="shead-inner"><button class="back-btn" onclick="goTo('hub')">←</button><h2 class="fd">CAST</h2></div></div>
+  <div class="content-wrap" id="characters-content">
+    <!-- Characters will be injected by JS -->
+  </div>
+</div>
+
+<!-- ==================== READER ==================== -->
+<div id="screen-reader" class="screen">
+  <div class="shead"><div class="shead-inner"><button class="back-btn" onclick="goTo('hub')">←</button><span id="r-chap-label"></span></div></div>
+  <div class="content-wrap" id="reader-content"></div>
+</div>
+
+<!-- ==================== PROMPTS GALLERY ==================== -->
+<div id="screen-prompts" class="screen">
+  <div class="shead"><div class="shead-inner"><button class="back-btn" onclick="goTo('hub')">←</button><h2 class="fd">AI PROMPTS</h2></div></div>
+  <div class="content-wrap" id="prompts-content"></div>
+</div>
+
+<script>
+// ====================== CONFIGURATION ======================
+const STORY = {
+  title: "[STORY TITLE]",
+  subtitle: "[TAGLINE]",
+  style: "Netflix Sakamoto Days anime style by Yo Moriyama, vibrant neon Tokyo nights, cinematic anime",
+  
+  characters: [
+    {
+      name: "Character Name",
+      role: "Protagonist",
+      desc: "Short description...",
+      prompt: "Full detailed image prompt here",
+      img: "https://picsum.photos/800/600?random=1"
+    },
+    // Add more characters
+  ],
+
+  chapters: [
+    {
+      num: 1,
+      arc: "Arc 1",
+      title: "Chapter Title",
+      readTime: "8 min",
+      arcBadge: "ARC I",
+      heroImg: "https://picsum.photos/800/450?random=10",
+      content: `
+        <p class="rtext">Your chapter text here with <span class="squote">beautiful quotes</span> and paragraphs...</p>
+        <img src="https://picsum.photos/800/450?random=11" class="scene-img">
+        <!-- Add more content -->
+      `
+    },
+    // Add more chapters
+  ],
+
+  prompts: [
+    { title: "Character 1", text: "Full AI image prompt..." },
+    // Add more
+  ]
+};
+
+// ====================== CORE FUNCTIONS ======================
+function goTo(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+
+// Render Characters
+function renderCharacters() {
+  const container = document.getElementById('characters-content');
+  let html = '';
+  STORY.characters.forEach(ch => {
+    html += `
+      <div style="margin-bottom:3rem;">
+        <img src="${ch.img}" class="char-img" onclick="document.getElementById('lb-img').src=this.src;document.getElementById('lightbox').classList.add('open');">
+        <h3 class="fd" style="margin:1rem 0 0.5rem;">${ch.name}</h3>
+        <p class="nt" style="margin-bottom:0.5rem;">${ch.role}</p>
+        <p>${ch.desc}</p>
+      </div>`;
+  });
+  container.innerHTML = html;
+}
+
+// Render Prompts
+function renderPrompts() {
+  const container = document.getElementById('prompts-content');
+  let html = '';
+  STORY.prompts.forEach(p => {
+    html += `
+      <div class="pcard">
+        <div class="pcard-head"><strong>${p.title}</strong></div>
+        <div class="pcard-body">${p.text}</div>
+      </div>`;
+  });
+  container.innerHTML = html;
+}
+
+// Render Chapter List
+function renderChapterList() {
+  const container = document.getElementById('chapter-list');
+  let html = '';
+  STORY.chapters.forEach(ch => {
+    html += `
+      <div class="chap-item" onclick="readChapter(${ch.num})" style="padding:1.25rem;display:flex;gap:1rem;align-items:center;margin-bottom:1rem;border-radius:12px;">
+        <div style="width:60px;height:60px;border-radius:10px;background:rgba(13,166,242,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="fd" style="font-size:2rem;color:var(--neon);">${ch.num}</span>
+        </div>
+        <div>
+          <p style="font-weight:700;">${ch.title}</p>
+          <p style="font-size:0.8rem;color:#aaa;">${ch.readTime}</p>
+        </div>
+      </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function readChapter(num) {
+  const ch = STORY.chapters.find(c => c.num === num);
+  if (!ch) return;
+
+  const header = `
+    <h1 class="fd" style="font-size:3rem;line-height:1;margin-bottom:1rem;">${ch.title}</h1>
+    <img src="${ch.heroImg}" class="scene-img">`;
+
+  document.getElementById('reader-content').innerHTML = header + ch.content;
+  goTo('reader');
+}
+
+// Initialize
+window.onload = function() {
+  renderChapterList();
+  renderCharacters();
+  renderPrompts();
+};
+</script>
+
+</body>
+</html>
