@@ -1,18 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[STORY TITLE] — Visual Novel Book</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Serif+JP:wght@300;400;700&family=Manrope:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JenJen & JunJun — Tides of Desire</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Serif+JP:wght@300;400;700&family=Manrope:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 :root {
-  --neon: #0da6f2;
-  --neon-pink: #ff2d78;
-  --neon-green: #39ff14;
-  --ink: #101c22;
-  --paper: #f5f7f8;
-  --mid: #1e2f38;
+  --neon:#0da6f2; --neon-pink:#ff2d78; --neon-green:#39ff14;
+  --ink:#101c22; --paper:#f5f7f8; --mid:#1e2f38;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;}
@@ -20,214 +16,152 @@ body{background:var(--ink);color:#e8ecef;font-family:'Manrope',sans-serif;min-he
 .fd{font-family:'Bebas Neue',cursive;}
 .fb{font-family:'Noto Serif JP',serif;}
 
-/* Scanlines */
 body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px);pointer-events:none;z-index:9999;}
 
-/* Screens */
 .screen{display:none;min-height:100vh;flex-direction:column;}
 .screen.active{display:flex;}
-
-/* Reader */
 #screen-reader{overflow-y:auto;max-height:100vh;}
 
-/* Neon */
 .nt{color:var(--neon);text-shadow:0 0 10px var(--neon),0 0 30px rgba(13,166,242,0.4);}
-.ng{box-shadow:0 0 30px rgba(13,166,242,0.2),0 0 60px rgba(13,166,242,0.1);}
-.nb{border:1px solid rgba(13,166,242,0.25);}
+.rtext{line-height:1.85;letter-spacing:0.025em;font-size:1.08rem;}
+.rtext p{color:#dde8ef;margin-bottom:1.7rem;}
+.dropcap::first-letter{font-family:'Bebas Neue',cursive;font-size:4.8rem;line-height:0.8;float:left;margin-right:0.15em;margin-top:0.08em;color:#ff2d78;text-shadow:0 0 20px rgba(255,45,120,0.9);}
 
-/* Reading */
-.rtext{line-height:1.9;letter-spacing:0.02em;font-size:1.05rem;}
-.rtext p{color:#dde8ef;margin-bottom:1.5rem;}
-.dropcap::first-letter{font-family:'Bebas Neue',cursive;font-size:4.5rem;line-height:0.8;float:left;margin-right:0.12em;margin-top:0.08em;color:#1af0ff;text-shadow:0 0 15px rgba(13,166,242,0.8);}
-.squote{border-left:3px solid var(--neon);background:rgba(13,166,242,0.08);padding:1.25rem 1.5rem;margin:2rem 0;border-radius:0 8px 8px 0;font-style:italic;color:#e2edf4;font-size:1.05rem;}
+.shead{position:sticky;top:3px;z-index:50;background:rgba(16,28,34,0.95);backdrop-filter:blur(10px);border-bottom:1px solid rgba(13,166,242,0.1);padding:1rem;}
+.back-btn{background:rgba(255,255,255,0.06);border:none;color:#aaa;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:1.1rem;}
 
-/* Progress */
-#gbar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--neon),var(--neon-pink));z-index:100;transition:width 0.2s;width:0%;}
-
-/* Cards */
-.char-img{width:100%;height:280px;object-fit:cover;object-position:top;display:block;}
-.scene-img{width:100%;border-radius:12px;margin:1.5rem 0;border:1px solid rgba(13,166,242,0.15);}
-
-/* Buttons & UI */
-.btn-primary{background:var(--neon);color:#0a1520;font-weight:800;padding:1rem 2rem;border-radius:10px;border:none;cursor:pointer;font-family:'Manrope',sans-serif;box-shadow:0 0 20px rgba(13,166,242,0.4);width:100%;max-width:280px;}
-.btn-ghost{background:transparent;color:var(--neon);font-weight:600;padding:0.85rem 2rem;border-radius:10px;border:1px solid rgba(13,166,242,0.4);cursor:pointer;width:100%;max-width:280px;}
-.bnav{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(16,28,34,0.97);backdrop-filter:blur(10px);border-top:1px solid rgba(13,166,242,0.1);padding:0.75rem 1rem 1.25rem;}
 .content-wrap{max-width:640px;margin:0 auto;width:100%;padding:1.5rem 1rem 6rem;}
+.scene-img{width:100%;border-radius:12px;margin:1.8rem 0;border:1px solid rgba(255,45,120,0.25);box-shadow:0 0 25px rgba(255,45,120,0.15);}
 
-/* Lightbox */
-#lightbox{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.95);display:none;align-items:center;justify-content:center;padding:1rem;}
-#lightbox.open{display:flex;}
-#lightbox img{max-width:100%;max-height:90vh;border-radius:12px;object-fit:contain;}
-
-:: -webkit-scrollbar{width:4px;}
-::-webkit-scrollbar-track{background:var(--ink);}
-::-webkit-scrollbar-thumb{background:rgba(13,166,242,0.3);border-radius:2px;}
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(16,28,34,0.97);backdrop-filter:blur(10px);border-top:1px solid rgba(13,166,242,0.1);padding:0.75rem 1rem 1.25rem;}
+.bnav-inner{max-width:400px;margin:0 auto;display:flex;justify-content:space-around;}
+.ntab{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;}
+.ntab.active,.ntab:hover{color:var(--neon-pink);}
+.ntab span.label{font-size:0.6rem;letter-spacing:0.1em;font-weight:700;}
 </style>
 </head>
 <body>
 
 <div id="gbar"></div>
 
-<!-- LIGHTBOX -->
-<div id="lightbox" onclick="closeLightbox()">
-  <img id="lb-img" src="" alt="">
-</div>
-
-<!-- ==================== WELCOME SCREEN ==================== -->
-<div id="screen-welcome" class="screen active">
-  <div class="content-wrap" style="text-align:center;padding-top:15vh;">
-    <h1 class="fd" style="font-size:3.5rem;line-height:1;color:white;">[STORY TITLE]</h1>
-    <p class="nt" style="font-size:1.4rem;margin:1rem 0;">[SUBTITLE / TAGLINE]</p>
-    <p style="max-width:500px;margin:2rem auto;color:#aaa;">[Short captivating description]</p>
-    <button class="btn-primary" onclick="goTo('hub')">ENTER STORY</button>
+<!-- WELCOME -->
+<div id="screen-welcome" class="screen active" style="background:linear-gradient(160deg,#0a1520 0%,#101c22 50%,#0a1015 100%);">
+  <div style="text-align:center;margin-top:12vh;padding:1rem;">
+    <h1 class="fd nt" style="font-size:3.5rem;letter-spacing:4px;">JENJEN & JUNJUN</h1>
+    <p class="fb" style="font-size:1.65rem;margin:1rem 0 3rem;color:var(--neon-pink);">Tides of Desire</p>
+    <button onclick="showChapters()" style="background:var(--neon-pink);color:white;padding:1.1rem 2.8rem;border:none;border-radius:12px;font-weight:800;cursor:pointer;font-size:1.15rem;">Begin the Journey</button>
   </div>
 </div>
 
-<!-- ==================== HUB ==================== -->
-<div id="screen-hub" class="screen">
-  <div class="shead"><div class="shead-inner"><button class="back-btn" onclick="goTo('welcome')">←</button><h2 id="hub-title" class="fd">CHAPTERS</h2></div></div>
+<!-- CHAPTERS -->
+<div id="screen-chapters" class="screen">
+  <div class="shead"><button class="back-btn" onclick="showWelcome()">←</button> Chapters</div>
   <div class="content-wrap" id="chapter-list"></div>
 </div>
 
-<!-- ==================== CHARACTERS ==================== -->
-<div id="screen-cast" class="screen">
-  <div class="shead"><div class="shead-inner"><button class="back-btn" onclick="goTo('hub')">←</button><h2 class="fd">CAST</h2></div></div>
-  <div class="content-wrap" id="characters-content">
-    <!-- Characters will be injected by JS -->
+<!-- READER -->
+<div id="screen-reader" class="screen">
+  <div class="shead">
+    <button class="back-btn" onclick="showChapters()">←</button>
+    <span id="current-chapter-title" class="fd nt" style="margin-left:12px;"></span>
+  </div>
+  <div class="content-wrap rtext" id="reader-content"></div>
+  <div id="cprog" style="height:4px;background:linear-gradient(90deg,#ff2d78,#0da6f2);width:0%;position:fixed;bottom:60px;left:0;"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bnav">
+  <div class="bnav-inner">
+    <button class="ntab" onclick="showWelcome()"><span class="ico">🏠</span><span class="label">HOME</span></button>
+    <button class="ntab active" onclick="showChapters()"><span class="ico">📖</span><span class="label">CHAPTERS</span></button>
   </div>
 </div>
 
-<!-- ==================== READER ==================== -->
-<div id="screen-reader" class="screen">
-  <div class="shead"><div class="shead-inner"><button class="back-btn" onclick="goTo('hub')">←</button><span id="r-chap-label"></span></div></div>
-  <div class="content-wrap" id="reader-content"></div>
-</div>
-
-<!-- ==================== PROMPTS GALLERY ==================== -->
-<div id="screen-prompts" class="screen">
-  <div class="shead"><div class="shead-inner"><button class="back-btn" onclick="goTo('hub')">←</button><h2 class="fd">AI PROMPTS</h2></div></div>
-  <div class="content-wrap" id="prompts-content"></div>
-</div>
-
 <script>
-// ====================== CONFIGURATION ======================
-const STORY = {
-  title: "[STORY TITLE]",
-  subtitle: "[TAGLINE]",
-  style: "Netflix Sakamoto Days anime style by Yo Moriyama, vibrant neon Tokyo nights, cinematic anime",
-  
-  characters: [
-    {
-      name: "Character Name",
-      role: "Protagonist",
-      desc: "Short description...",
-      prompt: "Full detailed image prompt here",
-      img: "https://picsum.photos/800/600?random=1"
-    },
-    // Add more characters
-  ],
+const chapters = [
+  {
+    id: 1,
+    title: "Chapter 1: First Catch",
+    content: `
+      <p class="dropcap">T</p>
+      <p>The golden sunlight danced across the calm waters of Baler as JenJen leaned over the edge of the small fishing boat. Her short dark hair whipped in the sea breeze, and her athletic figure was accentuated by a simple red bikini. JunJun, the tall Swedish man with striking blue eyes and short blonde hair, watched her with barely contained hunger.</p>
+      <img src="img/one.png" class="scene-img" alt="Fishing boat moment"/>
+      <p>They had only been dating a few weeks, but the attraction between them burned like wildfire. When JunJun pulled her into his arms, their lips met in a deep, searing kiss. His strong hands explored her sun-warmed skin as the boat gently rocked beneath them. What started as a romantic fishing trip quickly became something far more passionate — clothes discarded, bodies entwined under the open sky, lost in waves of desire.</p>
+    `
+  },
+  {
+    id: 2,
+    title: "Chapter 2: Flames of the Night",
+    content: `
+      <p class="dropcap">U</p>
+      <p>Under a canopy of stars, a bonfire crackled on the secluded beach. JenJen straddled JunJun’s lap, her skin glowing in the firelight. Their kisses were slow and deep at first, then turned wild and urgent. His hands roamed her body with reverence and hunger, drawing soft moans from her lips as she moved against him.</p>
+      <img src="img/two.png" class="scene-img" alt="Bonfire scene"/>
+      <p>That night they made love with unrestrained passion — again and again — until the fire burned low and the only heat left was the one between them.</p>
+    `
+  },
+  {
+    id: 3,
+    title: "Chapter 3: Waterfall Ecstasy",
+    content: `
+      <p class="dropcap">D</p>
+      <p>The following afternoon, they discovered a hidden waterfall deep in the jungle. Beneath the cascading water, JunJun pressed JenJen against the smooth rocks. Their bodies moved in perfect rhythm, the cool water contrasting with the fire of their desire. Every thrust, every kiss, every gasp echoed through the lush surroundings.</p>
+      <img src="img/three.png" class="scene-img" alt="Waterfall scene"/>
+      <p>It was raw, intense, and unforgettable — a moment of pure surrender to each other.</p>
+    `
+  },
+  {
+    id: 4,
+    title: "Chapter 4: Shadows in the Woods",
+    content: `
+      <p class="dropcap">T</p>
+      <p>On their third night, while walking back through the dense forest, the atmosphere shifted. Howls pierced the darkness. Massive werewolves emerged from the shadows, eyes glowing with primal rage. JunJun fought fiercely to protect JenJen, but one beast slashed him deeply across the chest.</p>
+      <img src="img/four.png" class="scene-img" alt="Werewolf attack"/>
+      <p>As death closed in, they clung to each other. In that desperate moment, their love transcended everything. Their blood mingled, their hearts synchronized — and a transformation began. Fangs extended. Power surged through their veins. They had become vampires, bound by an eternal, passionate bond.</p>
+    `
+  },
+  {
+    id: 5,
+    title: "Chapter 5: Blood Moon Triumph",
+    content: `
+      <p class="dropcap">B</p>
+      <p>Under the crimson Blood Moon, the newly turned vampires unleashed their fury. With superhuman speed and strength, JenJen and JunJun tore through the werewolf pack in a breathtaking display of power and coordination.</p>
+      <img src="img/five.png" class="scene-img" alt="Final battle"/>
+      <p>After defeating the Alpha, they stood victorious, covered in blood and adrenaline. Their eyes met, and the passion that had saved them ignited once more. In the aftermath of battle, they claimed each other completely — a fierce, eternal union under the watchful moon.</p>
+    `
+  }
+];
 
-  chapters: [
-    {
-      num: 1,
-      arc: "Arc 1",
-      title: "Chapter Title",
-      readTime: "8 min",
-      arcBadge: "ARC I",
-      heroImg: "https://picsum.photos/800/450?random=10",
-      content: `
-        <p class="rtext">Your chapter text here with <span class="squote">beautiful quotes</span> and paragraphs...</p>
-        <img src="https://picsum.photos/800/450?random=11" class="scene-img">
-        <!-- Add more content -->
-      `
-    },
-    // Add more chapters
-  ],
-
-  prompts: [
-    { title: "Character 1", text: "Full AI image prompt..." },
-    // Add more
-  ]
-};
-
-// ====================== CORE FUNCTIONS ======================
-function goTo(screen) {
+function showWelcome() {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + screen).classList.add('active');
+  document.getElementById('screen-welcome').classList.add('active');
 }
 
-function closeLightbox() {
-  document.getElementById('lightbox').classList.remove('open');
+function showChapters() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-chapters').classList.add('active');
+  const list = document.getElementById('chapter-list');
+  list.innerHTML = chapters.map(ch => `
+    <div onclick="openChapter(${ch.id})" style="padding:1.4rem 1rem;margin-bottom:1rem;background:rgba(255,45,120,0.08);border-radius:12px;border:1px solid rgba(255,45,120,0.2);cursor:pointer;">
+      <strong class="nt">${ch.title}</strong>
+    </div>
+  `).join('');
 }
 
-// Render Characters
-function renderCharacters() {
-  const container = document.getElementById('characters-content');
-  let html = '';
-  STORY.characters.forEach(ch => {
-    html += `
-      <div style="margin-bottom:3rem;">
-        <img src="${ch.img}" class="char-img" onclick="document.getElementById('lb-img').src=this.src;document.getElementById('lightbox').classList.add('open');">
-        <h3 class="fd" style="margin:1rem 0 0.5rem;">${ch.name}</h3>
-        <p class="nt" style="margin-bottom:0.5rem;">${ch.role}</p>
-        <p>${ch.desc}</p>
-      </div>`;
-  });
-  container.innerHTML = html;
+function openChapter(id) {
+  const ch = chapters.find(c => c.id === id);
+  document.getElementById('current-chapter-title').textContent = ch.title;
+  document.getElementById('reader-content').innerHTML = ch.content;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-reader').classList.add('active');
+
+  let progress = 0;
+  const prog = document.getElementById('cprog');
+  const interval = setInterval(() => {
+    progress += 10;
+    if (progress >= 100) { progress = 100; clearInterval(interval); }
+    prog.style.width = progress + '%';
+  }, 200);
 }
-
-// Render Prompts
-function renderPrompts() {
-  const container = document.getElementById('prompts-content');
-  let html = '';
-  STORY.prompts.forEach(p => {
-    html += `
-      <div class="pcard">
-        <div class="pcard-head"><strong>${p.title}</strong></div>
-        <div class="pcard-body">${p.text}</div>
-      </div>`;
-  });
-  container.innerHTML = html;
-}
-
-// Render Chapter List
-function renderChapterList() {
-  const container = document.getElementById('chapter-list');
-  let html = '';
-  STORY.chapters.forEach(ch => {
-    html += `
-      <div class="chap-item" onclick="readChapter(${ch.num})" style="padding:1.25rem;display:flex;gap:1rem;align-items:center;margin-bottom:1rem;border-radius:12px;">
-        <div style="width:60px;height:60px;border-radius:10px;background:rgba(13,166,242,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <span class="fd" style="font-size:2rem;color:var(--neon);">${ch.num}</span>
-        </div>
-        <div>
-          <p style="font-weight:700;">${ch.title}</p>
-          <p style="font-size:0.8rem;color:#aaa;">${ch.readTime}</p>
-        </div>
-      </div>`;
-  });
-  container.innerHTML = html;
-}
-
-function readChapter(num) {
-  const ch = STORY.chapters.find(c => c.num === num);
-  if (!ch) return;
-
-  const header = `
-    <h1 class="fd" style="font-size:3rem;line-height:1;margin-bottom:1rem;">${ch.title}</h1>
-    <img src="${ch.heroImg}" class="scene-img">`;
-
-  document.getElementById('reader-content').innerHTML = header + ch.content;
-  goTo('reader');
-}
-
-// Initialize
-window.onload = function() {
-  renderChapterList();
-  renderCharacters();
-  renderPrompts();
-};
 </script>
-
 </body>
 </html>
