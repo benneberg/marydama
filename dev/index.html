@@ -10,556 +10,677 @@
     --bg: #0a0a0a;
     --surface: #141414;
     --surface-raised: #1c1c1c;
-    --surface-strong: #242424;
+    --surface-strong: #262626;
     --border: #2a2a2a;
     --text: #f0f0f0;
     --text-secondary: #a0a0a0;
-    --text-tertiary: #666666;
-    --accent: #10a37f;
-    --accent-dim: rgba(16, 163, 127, 0.15);
+    --text-tertiary: #555;
+    --accent: #3a84f5;
+    --accent-dim: rgba(58,132,245,0.13);
+    --accent-border: rgba(58,132,245,0.35);
+    --positive: #22c55e;
+    --positive-dim: rgba(34,197,94,0.12);
     --danger: #ef4444;
     --warning: #f59e0b;
-    --positive: #22c55e;
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 14px;
-    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
-    --shadow: 0 4px 24px rgba(0,0,0,0.4);
-    --transition: 0.2s ease;
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-xl: 20px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    --shadow: 0 4px 24px rgba(0,0,0,0.5);
+    --nav-h: 60px;
+    --header-h: 52px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; overflow: hidden; }
   body {
-    font-family: var(--font-sans);
+    font-family: var(--font);
     background: var(--bg);
     color: var(--text);
     font-size: 15px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
   }
-  #app { height: 100vh; display: flex; flex-direction: column; }
-  
-  /* Header */
-  .app-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px; border-bottom: 1px solid var(--border);
-    background: var(--surface); flex-shrink: 0; z-index: 10;
+
+  /* ── Layout ─────────────────────────────────── */
+  #app {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
   }
-  .app-header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
-  .app-header .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* ── Header ──────────────────────────────────── */
+  .app-header {
+    height: var(--header-h);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    z-index: 20;
+  }
+  .app-header h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-right { display: flex; gap: 8px; align-items: center; }
   .icon-btn {
-    width: 36px; height: 36px; border-radius: var(--radius-md);
+    width: 34px; height: 34px; border-radius: var(--r-md);
     border: 1px solid var(--border); background: var(--surface-raised);
     color: var(--text-secondary); display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: var(--transition); font-size: 18px;
+    cursor: pointer; font-size: 16px; transition: 0.15s ease;
   }
   .icon-btn:hover { background: var(--surface-strong); color: var(--text); }
-  .icon-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
-  
-  /* Main Content */
-  .main-content { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
-  .main-content::-webkit-scrollbar { width: 4px; }
-  .main-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-  
-  /* View System */
-  .view { display: none; padding: 16px; min-height: 100%; }
-  .view.active { display: block; }
-  .view-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; letter-spacing: -0.5px; }
-  
-  /* Cards */
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  /* ── Panels (views) ─────────────────────────── */
+  .panels {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .panel {
+    position: absolute; inset: 0;
+    overflow-y: auto; overflow-x: hidden;
+    display: none;
+    padding: 16px;
+    padding-bottom: 20px;
+  }
+  .panel.active { display: block; }
+  .panel::-webkit-scrollbar { width: 3px; }
+  .panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Chat panel is flex, not scrollable itself */
+  #panel-chat {
+    display: none;
+    flex-direction: column;
+    padding: 0;
+  }
+  #panel-chat.active { display: flex; }
+
+  /* ── Bottom Nav ──────────────────────────────── */
+  .bottom-nav {
+    height: calc(var(--nav-h) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    display: flex;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    z-index: 20;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    color: var(--text-tertiary); cursor: pointer;
+    background: none; border: none; font-family: inherit;
+    transition: color 0.15s ease;
+    padding: 0;
+  }
+  .nav-item.active { color: var(--accent); }
+  .nav-item svg { width: 22px; height: 22px; }
+  .nav-label { font-size: 10px; font-weight: 500; letter-spacing: 0.2px; }
+
+  /* ── Cards ───────────────────────────────────── */
   .card {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px;
-    transition: var(--transition);
+    border-radius: var(--r-lg); padding: 14px 16px; margin-bottom: 10px;
   }
-  .card:hover { border-color: #333; }
-  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .card.accent-border { border-color: var(--accent-border); background: var(--accent-dim); }
   .card-title { font-weight: 600; font-size: 15px; }
-  .card-meta { font-size: 13px; color: var(--text-tertiary); margin-top: 4px; }
-  .card-actions { display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s; }
-  .card:hover .card-actions { opacity: 1; }
+  .card-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 3px; }
+
+  /* ── Project cards ───────────────────────────── */
+  .project-card {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r-lg); margin-bottom: 10px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .project-card:hover { border-color: var(--accent-border); }
+  .project-card.active { border-color: var(--accent); background: var(--accent-dim); }
+  .project-card-info { flex: 1; min-width: 0; }
+  .project-card-name { font-weight: 600; font-size: 15px; }
+  .project-card-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 3px; }
+  .project-card-actions { display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
+  .project-card:hover .project-card-actions { opacity: 1; }
+
+  /* ── Buttons ─────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 11px 18px; border-radius: var(--r-md); border: none;
+    font-size: 15px; font-weight: 500; cursor: pointer; transition: 0.15s ease;
+    font-family: inherit; white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { filter: brightness(1.12); }
+  .btn-secondary {
+    background: var(--surface-raised); color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--surface-strong); }
+  .btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+  .btn-danger:hover { background: rgba(239,68,68,0.25); }
+  .btn-block { width: 100%; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .btn-sm {
-    padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    padding: 5px 10px; border-radius: var(--r-sm); border: 1px solid var(--border);
     background: var(--surface-raised); color: var(--text-secondary); font-size: 12px;
-    cursor: pointer; transition: var(--transition);
+    cursor: pointer; transition: 0.15s ease; font-family: inherit;
   }
   .btn-sm:hover { background: var(--surface-strong); color: var(--text); }
-  .btn-sm.danger:hover { background: rgba(239,68,68,0.15); color: var(--danger); border-color: var(--danger); }
-  
-  /* Forms */
-  .form-group { margin-bottom: 16px; }
-  .form-label { display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .btn-sm.danger:hover { background: rgba(239,68,68,0.15); color: var(--danger); border-color: rgba(239,68,68,0.4); }
+
+  /* ── Forms ───────────────────────────────────── */
+  .form-group { margin-bottom: 14px; }
+  .form-label {
+    display: block; font-size: 11px; font-weight: 600;
+    color: var(--text-secondary); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
   .form-input, .form-select, .form-textarea {
-    width: 100%; padding: 12px 14px; border-radius: var(--radius-md);
+    width: 100%; padding: 11px 14px; border-radius: var(--r-md);
     border: 1px solid var(--border); background: var(--surface-raised);
     color: var(--text); font-size: 15px; font-family: inherit;
-    outline: none; transition: var(--transition);
+    outline: none; transition: border-color 0.15s;
   }
-  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
-  .form-textarea { resize: vertical; min-height: 100px; font-family: var(--font-mono); font-size: 13px; }
-  .form-select { cursor: pointer; }
-  .form-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
-  
-  /* Buttons */
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 12px 20px; border-radius: var(--radius-md); border: none;
-    font-size: 15px; font-weight: 500; cursor: pointer; transition: var(--transition);
-    font-family: inherit;
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--accent);
   }
-  .btn-primary { background: var(--accent); color: #000; }
-  .btn-primary:hover { filter: brightness(1.1); }
-  .btn-secondary { background: var(--surface-raised); color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover { background: var(--surface-strong); }
-  .btn-block { width: 100%; }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  
-  /* Toggle Switch */
-  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
-  .toggle-row:last-child { border-bottom: none; }
-  .toggle-label { font-weight: 500; }
-  .toggle-desc { font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
+  .form-textarea { resize: vertical; min-height: 80px; font-family: var(--mono); font-size: 13px; }
+  .form-select { cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px;
+  }
+  .form-hint { font-size: 11px; color: var(--text-tertiary); margin-top: 5px; }
+
+  /* ── Toggle ──────────────────────────────────── */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 0; border-bottom: 1px solid var(--border);
+  }
+  .toggle-row:last-of-type { border-bottom: none; }
+  .toggle-label { font-weight: 500; font-size: 15px; }
   .toggle-switch {
-    position: relative; width: 48px; height: 28px; border-radius: 14px;
-    background: var(--surface-strong); border: 1px solid var(--border);
-    cursor: pointer; transition: var(--transition); flex-shrink: 0;
+    position: relative; width: 50px; height: 28px; border-radius: 14px;
+    background: var(--surface-strong); border: none;
+    cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+    outline: none;
   }
   .toggle-switch::after {
-    content: ''; position: absolute; top: 2px; left: 2px;
-    width: 22px; height: 22px; border-radius: 50%; background: var(--text);
-    transition: var(--transition);
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; transition: 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
   }
-  .toggle-switch.on { background: var(--accent); border-color: var(--accent); }
-  .toggle-switch.on::after { left: 22px; background: #000; }
-  
-  /* Chat Interface */
-  .chat-container { display: flex; flex-direction: column; height: 100%; padding: 0; }
-  .chat-messages { flex: 1; overflow-y: auto; padding: 16px; }
-  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .toggle-switch.on { background: var(--accent); }
+  .toggle-switch.on::after { left: 25px; }
+
+  /* ── Section title ───────────────────────────── */
+  .section-title {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.4px;
+    margin-bottom: 16px;
+  }
+
+  /* ── Chat layout ─────────────────────────────── */
+  .chat-top {
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 10px 14px;
+  }
+  .chat-model-row { margin-bottom: 8px; }
+  .model-select-wrap { position: relative; }
+  .model-select-wrap select {
+    width: 100%; padding: 9px 36px 9px 12px; border-radius: var(--r-md);
+    border: 1px solid var(--border); background: var(--surface-raised);
+    color: var(--text); font-size: 14px; font-family: inherit;
+    outline: none; cursor: pointer; appearance: none; transition: border-color 0.15s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .model-select-wrap select:focus { border-color: var(--accent); }
+  .chat-role-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .role-tab {
+    padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--surface-raised); color: var(--text-secondary);
+    font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.15s;
+  }
+  .role-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 14px;
+  }
+  .chat-messages::-webkit-scrollbar { width: 3px; }
   .chat-messages::-webkit-scrollbar-thumb { background: var(--border); }
-  .message { display: flex; gap: 12px; margin-bottom: 20px; animation: msgIn 0.2s ease; }
-  @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  .message-avatar {
-    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+
+  .message { display: flex; gap: 10px; margin-bottom: 18px; animation: msgIn 0.18s ease; }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .msg-avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 600;
+    font-size: 12px; font-weight: 700;
   }
-  .message.user .message-avatar { background: var(--accent); color: #000; }
-  .message.assistant .message-avatar { background: var(--surface-strong); color: var(--accent); }
-  .message-content { flex: 1; min-width: 0; }
-  .message-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .message-name { font-weight: 600; font-size: 14px; }
-  .message-time { font-size: 11px; color: var(--text-tertiary); }
-  .message-bubble {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 12px 14px; font-size: 14px; line-height: 1.6;
+  .message.user .msg-avatar { background: var(--accent); color: #fff; }
+  .message.assistant .msg-avatar { background: var(--surface-strong); color: var(--accent); }
+  .msg-body { flex: 1; min-width: 0; }
+  .msg-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--text-secondary); }
+  .msg-bubble {
+    background: var(--surface-raised); border: 1px solid var(--border);
+    border-radius: 0 var(--r-lg) var(--r-lg) var(--r-lg);
+    padding: 10px 13px; font-size: 14px; line-height: 1.6;
     word-wrap: break-word;
   }
-  .message.user .message-bubble { background: var(--accent-dim); border-color: rgba(16,163,127,0.3); }
-  .message-bubble pre {
-    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md);
-    padding: 12px; overflow-x: auto; margin: 8px 0; font-family: var(--font-mono); font-size: 12px;
+  .message.user .msg-bubble {
+    background: var(--accent-dim); border-color: var(--accent-border);
+    border-radius: var(--r-lg) 0 var(--r-lg) var(--r-lg);
   }
-  .message-bubble code {
-    font-family: var(--font-mono); font-size: 12px; background: var(--bg);
-    padding: 2px 6px; border-radius: 4px; color: var(--accent);
+  .msg-bubble pre {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 10px 12px; overflow-x: auto; margin: 8px 0;
+    font-family: var(--mono); font-size: 12px; line-height: 1.5;
   }
-  .message-bubble pre code { padding: 0; background: none; }
-  .message-bubble p { margin-bottom: 8px; }
-  .message-bubble p:last-child { margin-bottom: 0; }
-  .message-bubble ul, .message-bubble ol { margin-left: 18px; margin-bottom: 8px; }
-  .message-bubble li { margin-bottom: 4px; }
-  .message-bubble strong { color: var(--text); }
-  
-  /* Chat Input */
-  .chat-input-area {
-    border-top: 1px solid var(--border); padding: 12px 16px;
-    background: var(--surface); flex-shrink: 0;
+  .msg-bubble code {
+    font-family: var(--mono); font-size: 12px;
+    background: rgba(255,255,255,0.07); padding: 2px 5px; border-radius: 4px;
   }
-  .chat-input-wrap {
+  .msg-bubble pre code { padding: 0; background: none; }
+  .msg-bubble p { margin-bottom: 6px; }
+  .msg-bubble p:last-child { margin-bottom: 0; }
+  .msg-bubble ul, .msg-bubble ol { margin-left: 18px; margin-bottom: 6px; }
+  .msg-bubble li { margin-bottom: 3px; }
+  .msg-bubble h1,.msg-bubble h2,.msg-bubble h3 { margin: 10px 0 6px; font-size: 14px; }
+
+  /* Chat input area */
+  .chat-bottom {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    padding: 10px 12px;
+  }
+  .chat-tools { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .tool-btn {
+    padding: 5px 10px; border-radius: var(--r-sm); border: 1px solid var(--border);
+    background: var(--surface-raised); color: var(--text-secondary);
+    font-size: 12px; cursor: pointer; transition: 0.15s;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .tool-btn:hover { background: var(--surface-strong); color: var(--text); }
+  .tool-btn.on { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-border); }
+  .chat-input-row {
     display: flex; gap: 8px; align-items: flex-end;
     background: var(--surface-raised); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 8px 12px;
+    border-radius: var(--r-lg); padding: 7px 10px;
+    transition: border-color 0.15s;
   }
-  .chat-input-wrap:focus-within { border-color: var(--accent); }
+  .chat-input-row:focus-within { border-color: var(--accent); }
   .chat-input {
     flex: 1; background: none; border: none; color: var(--text);
     font-size: 15px; font-family: inherit; resize: none; outline: none;
-    max-height: 120px; min-height: 24px; line-height: 1.5;
+    max-height: 100px; min-height: 22px; line-height: 1.5;
   }
   .chat-input::placeholder { color: var(--text-tertiary); }
-  .chat-send-btn {
-    width: 36px; height: 36px; border-radius: 50%; border: none;
-    background: var(--accent); color: #000; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: var(--transition); flex-shrink: 0;
+  .send-btn {
+    width: 34px; height: 34px; border-radius: 50%; border: none;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; transition: 0.15s;
   }
-  .chat-send-btn:hover { filter: brightness(1.1); }
-  .chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .chat-toolbar { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-  .chat-tool-btn {
-    padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-    background: var(--surface-raised); color: var(--text-secondary); font-size: 12px;
-    cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; gap: 4px;
-  }
-  .chat-tool-btn:hover { background: var(--surface-strong); color: var(--text); }
-  .chat-tool-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
-  
-  /* Model Selector */
-  .model-selector { margin-bottom: 12px; }
-  .model-selector select {
-    width: 100%; padding: 10px 14px; border-radius: var(--radius-md);
-    border: 1px solid var(--border); background: var(--surface-raised);
-    color: var(--text); font-size: 14px; cursor: pointer;
-  }
-  
-  /* Terminal / Code Output */
-  .terminal {
-    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md);
-    padding: 12px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6;
-    overflow-x: auto; margin: 8px 0; color: var(--text-secondary);
-  }
-  .terminal .cmd { color: var(--accent); }
-  .terminal .output { color: var(--text-secondary); }
-  .terminal .error { color: var(--danger); }
-  .terminal .success { color: var(--positive); }
-  
-  /* File Tree */
-  .file-tree { font-family: var(--font-mono); font-size: 13px; }
-  .file-tree-item { padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; gap: 8px; }
-  .file-tree-item:hover { background: var(--surface-raised); }
-  .file-tree-item.active { background: var(--accent-dim); color: var(--accent); }
-  .file-tree-icon { font-size: 14px; }
-  
-  /* Git Panel */
-  .git-repo-list { margin-bottom: 16px; }
-  .git-repo-item {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md);
-    background: var(--surface); margin-bottom: 8px; cursor: pointer; transition: var(--transition);
-  }
-  .git-repo-item:hover { border-color: var(--accent); }
-  .git-repo-item.connected { border-color: var(--accent); background: var(--accent-dim); }
-  .git-repo-name { font-weight: 500; }
-  .git-repo-desc { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
-  .git-status { display: flex; gap: 12px; margin: 12px 0; flex-wrap: wrap; }
-  .git-status-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-  .git-status-dot { width: 8px; height: 8px; border-radius: 50%; }
-  .git-commit-list { margin-top: 12px; }
-  .git-commit-item { padding: 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
-  .git-commit-msg { font-weight: 500; }
-  .git-commit-meta { color: var(--text-tertiary); font-size: 11px; margin-top: 2px; }
-  
-  /* Empty States */
-  .empty-state { text-align: center; padding: 48px 24px; color: var(--text-tertiary); }
-  .empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
-  .empty-state-title { font-size: 17px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
-  .empty-state-desc { font-size: 14px; line-height: 1.5; }
-  
-  /* Modals */
-  .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-    display: flex; align-items: flex-end; justify-content: center;
-    z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s;
-  }
-  .modal-overlay.active { opacity: 1; pointer-events: all; }
-  .modal {
+  .send-btn:hover { filter: brightness(1.12); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .send-btn svg { width: 15px; height: 15px; }
+
+  /* ── Git panel ───────────────────────────────── */
+  .repo-card {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto;
-    padding: 20px; transform: translateY(100%); transition: transform 0.3s ease;
+    border-radius: var(--r-lg); padding: 14px 16px;
+    cursor: pointer; margin-bottom: 8px; transition: 0.15s;
   }
-  .modal-overlay.active .modal { transform: translateY(0); }
-  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .modal-title { font-size: 18px; font-weight: 600; }
-  .modal-close { font-size: 24px; color: var(--text-tertiary); cursor: pointer; background: none; border: none; }
-  
-  /* Bottom Nav */
-  .bottom-nav {
-    display: flex; justify-content: space-around; align-items: center;
-    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--border); background: var(--surface);
-    flex-shrink: 0; z-index: 10;
+  .repo-card:hover { border-color: var(--accent-border); }
+  .repo-card.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .repo-card .repo-name { font-weight: 600; font-size: 15px; }
+  .repo-card .repo-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 3px; }
+  .git-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .git-actions .btn { flex: 1; padding: 10px; font-size: 14px; }
+
+  /* File tree */
+  .file-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: var(--r-sm);
+    cursor: pointer; font-size: 13px; font-family: var(--mono);
+    transition: background 0.12s;
   }
-  .nav-item {
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    padding: 4px 12px; color: var(--text-tertiary); cursor: pointer;
-    transition: var(--transition); border: none; background: none; font-family: inherit;
+  .file-item:hover { background: var(--surface-raised); }
+  .file-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  /* ── Empty state ─────────────────────────────── */
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-tertiary); }
+  .empty-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.5; }
+  .empty-title { font-size: 17px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+  .empty-desc { font-size: 13px; line-height: 1.6; }
+
+  /* ── Loading dots ────────────────────────────── */
+  .loading-dots { display: inline-flex; gap: 4px; padding: 4px 0; }
+  .loading-dots span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); animation: dot 1.4s infinite;
   }
-  .nav-item.active { color: var(--accent); }
-  .nav-item .nav-icon { font-size: 22px; }
-  .nav-item .nav-label { font-size: 11px; font-weight: 500; }
-  
-  /* Loading */
-  .loading-dots { display: inline-flex; gap: 4px; }
-  .loading-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: dotPulse 1.4s infinite; }
   .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
   .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes dotPulse { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
-  
-  /* Toast */
-  .toast-container { position: fixed; top: 16px; left: 16px; right: 16px; z-index: 200; pointer-events: none; }
+  @keyframes dot { 0%,80%,100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+
+  /* ── Toast ───────────────────────────────────── */
+  .toast-wrap { position: fixed; top: 56px; left: 12px; right: 12px; z-index: 300; pointer-events: none; }
   .toast {
     background: var(--surface-raised); border: 1px solid var(--border);
-    border-radius: var(--radius-md); padding: 12px 16px;
-    box-shadow: var(--shadow); margin-bottom: 8px;
+    border-radius: var(--r-md); padding: 10px 14px;
+    box-shadow: var(--shadow); margin-bottom: 6px;
     display: flex; align-items: center; gap: 10px;
-    animation: toastIn 0.3s ease; pointer-events: all;
+    animation: toastIn 0.25s ease; pointer-events: all;
+    font-size: 14px; transition: opacity 0.25s, transform 0.25s;
   }
-  @keyframes toastIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
   .toast.success { border-color: var(--positive); }
   .toast.error { border-color: var(--danger); }
-  
-  /* Responsive */
-  @media (min-width: 768px) {
-    .modal-overlay { align-items: center; }
-    .modal { border-radius: var(--radius-lg); transform: scale(0.95); }
-    .modal-overlay.active .modal { transform: scale(1); }
-    .chat-messages { padding: 24px; max-width: 800px; margin: 0 auto; }
-    .view { max-width: 800px; margin: 0 auto; padding: 24px; }
+  .toast.warning { border-color: var(--warning); }
+
+  /* ── Modal (sheet) ───────────────────────────── */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    display: flex; align-items: flex-end; justify-content: center;
   }
-  
-  /* Utility */
+  .overlay.open { opacity: 1; pointer-events: all; }
+  .sheet {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    width: 100%; max-width: 600px; max-height: 88vh; overflow-y: auto;
+    padding: 20px; transform: translateY(100%); transition: transform 0.28s ease;
+  }
+  .overlay.open .sheet { transform: translateY(0); }
+  .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .sheet-title { font-size: 17px; font-weight: 700; }
+  .sheet-close {
+    font-size: 22px; color: var(--text-tertiary); cursor: pointer;
+    background: none; border: none; line-height: 1; padding: 2px;
+  }
+  .sheet::-webkit-scrollbar { width: 3px; }
+  .sheet::-webkit-scrollbar-thumb { background: var(--border); }
+
+  /* ── Commit modal ────────────────────────────── */
+  .commit-area { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ── Utilities ───────────────────────────────── */
   .hidden { display: none !important; }
-  .text-right { text-align: right; }
-  .mb-2 { margin-bottom: 8px; }
-  .mb-4 { margin-bottom: 16px; }
   .mt-2 { margin-top: 8px; }
+  .mt-3 { margin-top: 12px; }
   .mt-4 { margin-top: 16px; }
+  .mb-2 { margin-bottom: 8px; }
   .flex { display: flex; }
-  .flex-col { flex-direction: column; }
   .gap-2 { gap: 8px; }
-  .gap-3 { gap: 12px; }
   .items-center { align-items: center; }
   .justify-between { justify-content: space-between; }
   .w-full { width: 100%; }
+  .font-mono { font-family: var(--mono); }
   .text-sm { font-size: 13px; }
   .text-xs { font-size: 11px; }
   .text-secondary { color: var(--text-secondary); }
   .text-tertiary { color: var(--text-tertiary); }
-  .font-mono { font-family: var(--font-mono); }
+  .text-accent { color: var(--accent); }
+  .text-danger { color: var(--danger); }
   .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+  /* ── Desktop adjustments ─────────────────────── */
+  @media (min-width: 768px) {
+    .overlay { align-items: center; }
+    .sheet { border-radius: var(--r-xl); max-height: 85vh; transform: scale(0.96); }
+    .overlay.open .sheet { transform: scale(1); }
+    .panel, #panel-chat { max-width: 700px; margin: 0 auto; }
+  }
 </style>
 </head>
 <body>
 <div id="app">
+
+  <!-- Header -->
   <header class="app-header">
     <h1>DevAI</h1>
-    <div class="header-actions">
-      <button class="icon-btn" id="newProjectBtn" title="New Project">+</button>
-      <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
+    <div class="header-right">
+      <button class="icon-btn" id="btnNewProject" title="New project">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button class="icon-btn" id="btnSettingsShortcut" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      </button>
     </div>
   </header>
-  
-  <main class="main-content" id="mainContent">
-    <!-- Projects View -->
-    <div class="view active" id="view-projects">
-      <div class="view-title">Projects</div>
+
+  <!-- Panels -->
+  <div class="panels">
+
+    <!-- Projects -->
+    <div class="panel active" id="panel-projects">
+      <div class="section-title">Projects</div>
       <div id="projectsList"></div>
-      <div class="empty-state hidden" id="projectsEmpty">
-        <div class="empty-state-icon">📁</div>
-        <div class="empty-state-title">No projects yet</div>
-        <div class="empty-state-desc">Create a new project to start coding with AI assistance.</div>
-        <button class="btn btn-primary btn-block mt-4" onclick="app.showModal('projectModal')">Create Project</button>
+      <div id="projectsEmpty" class="empty-state hidden">
+        <div class="empty-icon">📁</div>
+        <div class="empty-title">No projects yet</div>
+        <div class="empty-desc">Tap + to create a project and start coding with AI.</div>
+        <button class="btn btn-primary mt-4" onclick="openSheet('sheetProject')">Create Project</button>
       </div>
     </div>
-    
-    <!-- Chat View -->
-    <div class="view" id="view-chat">
-      <div class="chat-container">
-        <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface);">
-          <div class="model-selector">
+
+    <!-- Chat -->
+    <div class="panel" id="panel-chat">
+      <!-- Top bar: model + role -->
+      <div class="chat-top">
+        <div class="chat-model-row">
+          <div class="model-select-wrap">
             <select id="modelSelect">
-              <option value="">Select a model...</option>
+              <option value="">Select model…</option>
             </select>
           </div>
-          <div class="flex gap-2 items-center" style="flex-wrap: wrap;">
-            <select id="expertRoleSelect" class="form-select" style="flex: 1; min-width: 120px; padding: 8px 12px; font-size: 13px;">
-              <option value="">General Assistant</option>
-              <option value="frontend">Frontend Expert</option>
-              <option value="backend">Backend Expert</option>
-              <option value="devops">DevOps Engineer</option>
-              <option value="reviewer">Code Reviewer</option>
-              <option value="architect">System Architect</option>
-            </select>
-            <button class="btn-sm" id="clearChatBtn">Clear</button>
-          </div>
         </div>
-        <div class="chat-messages" id="chatMessages"></div>
-        <div class="chat-input-area">
-          <div class="chat-toolbar">
-            <button class="chat-tool-btn" data-tool="read_file" title="Read file">📄 Read</button>
-            <button class="chat-tool-btn" data-tool="write_file" title="Write file">✏️ Write</button>
-            <button class="chat-tool-btn" data-tool="run_command" title="Run command">⚡ Run</button>
-            <button class="chat-tool-btn" data-tool="git_status" title="Git status">📊 Status</button>
-            <button class="chat-tool-btn" data-tool="code_review" title="Review code">🔍 Review</button>
-            <button class="chat-tool-btn" data-tool="search_files" title="Search files">🔎 Search</button>
+        <div class="chat-role-tabs" id="roleTabs">
+          <button class="role-tab active" data-role="">General</button>
+          <button class="role-tab" data-role="frontend">Frontend Expert</button>
+          <button class="role-tab" data-role="backend">Backend Expert</button>
+          <button class="role-tab" data-role="reviewer">Code Reviewer</button>
+          <button class="role-tab" data-role="architect">Architect</button>
+        </div>
+      </div>
+      <!-- Messages -->
+      <div class="chat-messages" id="chatMessages"></div>
+      <!-- Input -->
+      <div class="chat-bottom">
+        <div class="chat-tools">
+          <button class="tool-btn" data-tool="read">📄 Read</button>
+          <button class="tool-btn" data-tool="write">✏️ Write</button>
+          <button class="tool-btn" data-tool="run">⚡ Run</button>
+          <button class="tool-btn" data-tool="review">🔍 Review</button>
+        </div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chatInput" placeholder="Ask the AI…" rows="1"></textarea>
+          <button class="send-btn" id="sendBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Git -->
+    <div class="panel" id="panel-git">
+      <div class="section-title">Git Integration</div>
+
+      <!-- Not connected state -->
+      <div id="gitNotConnected">
+        <div class="empty-state" style="padding: 24px 0;">
+          <div class="empty-icon">🔌</div>
+          <div class="empty-title">Connect GitHub</div>
+          <div class="empty-desc mb-2">Link your account to manage repositories directly.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">GitHub Token</label>
+          <input type="password" class="form-input" id="githubTokenInput" placeholder="ghp_xxxxxxxxxxxx">
+          <div class="form-hint">Create at github.com/settings/tokens with <strong>repo</strong> scope.</div>
+        </div>
+        <button class="btn btn-primary btn-block mt-3" id="btnConnectGit">Connect to GitHub</button>
+
+        <div class="divider mt-4"></div>
+        <div class="text-secondary text-sm mb-2">Or load a local ZIP project:</div>
+        <label class="btn btn-secondary btn-block" style="cursor:pointer;">
+          📦 Upload ZIP Project
+          <input type="file" id="zipUpload" accept=".zip" class="hidden">
+        </label>
+      </div>
+
+      <!-- Connected state -->
+      <div id="gitConnected" class="hidden">
+        <div class="card flex items-center justify-between mb-3" style="gap:10px;">
+          <div>
+            <div class="card-title" id="gitUserName">GitHub User</div>
+            <div class="card-sub text-accent" id="gitUserLogin">@login</div>
           </div>
-          <div class="chat-input-wrap">
-            <textarea class="chat-input" id="chatInput" placeholder="Ask the AI to help you code..." rows="1"></textarea>
-            <button class="chat-send-btn" id="chatSendBtn">➤</button>
+          <button class="btn-sm danger" id="btnDisconnectGit">Disconnect</button>
+        </div>
+
+        <div id="repoList"></div>
+
+        <div id="repoDetail" class="hidden">
+          <div class="divider"></div>
+          <div class="text-sm text-secondary mb-2" id="repoDetailName"></div>
+          <div id="fileTree"></div>
+          <div class="git-actions">
+            <button class="btn btn-secondary" id="btnPull">Pull</button>
+            <button class="btn btn-secondary" id="btnCommit">Commit</button>
+            <button class="btn btn-secondary" id="btnPush">Push</button>
+          </div>
+          <div class="mt-4">
+            <div class="form-label">Recent Commits</div>
+            <div id="commitList"></div>
           </div>
         </div>
       </div>
     </div>
-    
-    <!-- Git View -->
-    <div class="view" id="view-git">
-      <div class="view-title">Git Integration</div>
-      <div id="gitContent">
-        <div class="empty-state" id="gitEmpty">
-          <div class="empty-state-icon">🔌</div>
-          <div class="empty-state-title">Connect to GitHub</div>
-          <div class="empty-state-desc">Link your GitHub account to manage repositories, review code, and commit changes.</div>
-          <div class="form-group mt-4 text-left">
-            <label class="form-label">GitHub Token</label>
-            <input type="password" class="form-input" id="githubToken" placeholder="ghp_xxxxxxxxxxxx">
-            <div class="form-hint">Create a token at github.com/settings/tokens with 'repo' scope.</div>
-          </div>
-          <button class="btn btn-primary btn-block mt-4" id="connectGitBtn">Connect</button>
-        </div>
-        <div class="hidden" id="gitConnected">
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <div class="card-title" id="gitUserName">Connected</div>
-                <div class="card-meta" id="gitUserLogin">@user</div>
-              </div>
-              <button class="btn-sm danger" id="disconnectGitBtn">Disconnect</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Select Repository</label>
-            <select class="form-select" id="repoSelect"><option>Loading...</option></select>
-          </div>
-          <div id="repoDetails"></div>
-        </div>
+
+    <!-- Settings -->
+    <div class="panel" id="panel-settings">
+      <div class="section-title">Settings</div>
+
+      <!-- API Keys -->
+      <div class="form-group">
+        <label class="form-label">Groq API Key</label>
+        <input type="password" class="form-input" id="groqKey" placeholder="gsk_xxxxxxxxxxxx">
       </div>
+      <div class="form-group">
+        <label class="form-label">OpenRouter API Key</label>
+        <input type="password" class="form-input" id="openrouterKey" placeholder="sk-or-v1-xxxxxxxx">
+      </div>
+      <div class="form-group">
+        <label class="form-label">GitHub Token</label>
+        <input type="password" class="form-input" id="githubTokenSettings" placeholder="ghp_xxxxxxxxxxxx">
+        <div class="form-hint">Used for GitHub repo access. Scope: <code>repo</code></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Toggles -->
+      <div class="toggle-row">
+        <span class="toggle-label">Stream responses</span>
+        <button class="toggle-switch on" id="togStream" onclick="app.toggle('stream')"></button>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Auto-save chats</span>
+        <button class="toggle-switch on" id="togAutosave" onclick="app.toggle('autosave')"></button>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Confirm commands</span>
+        <button class="toggle-switch" id="togConfirm" onclick="app.toggle('confirmCommands')"></button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Advanced -->
+      <div class="form-group">
+        <label class="form-label">Max tokens per request</label>
+        <input type="number" class="form-input" id="maxTokens" value="2048" min="256" max="8192" step="256">
+        <div class="form-hint">Lower = cheaper & faster. 2048 is good for most tasks.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">System prompt (optional)</label>
+        <textarea class="form-textarea" id="systemPrompt" placeholder="You are a senior developer…"></textarea>
+      </div>
+
+      <button class="btn btn-primary btn-block mt-3" id="btnSaveSettings">Save Settings</button>
+
+      <div class="divider"></div>
+      <div class="flex gap-2 mt-2">
+        <button class="btn btn-secondary" style="flex:1" id="btnExport">Export data</button>
+        <button class="btn btn-secondary" style="flex:1" id="btnImport">Import data</button>
+        <input type="file" id="importFile" class="hidden" accept=".json">
+      </div>
+      <button class="btn btn-danger btn-block mt-2" id="btnClearAll">Clear all data</button>
     </div>
-    
-    <!-- Settings View -->
-    <div class="view" id="view-settings">
-      <div class="view-title">Settings</div>
-      
-      <div class="card">
-        <div class="card-title mb-2">API Configuration</div>
-        <div class="form-group">
-          <label class="form-label">Groq API Key</label>
-          <input type="password" class="form-input" id="groqKey" placeholder="gsk_xxxxxxxxxxxx">
-          <div class="form-hint">Get your key at console.groq.com</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">OpenRouter API Key</label>
-          <input type="password" class="form-input" id="openrouterKey" placeholder="sk-or-v1-xxxxxxxx">
-          <div class="form-hint">Get your key at openrouter.ai/keys</div>
-        </div>
-      </div>
-      
-      <div class="card">
-        <div class="card-title mb-2">Model Preferences</div>
-        <div class="form-group">
-          <label class="form-label">Default Provider</label>
-          <select class="form-select" id="defaultProvider">
-            <option value="groq">Groq (Fast Inference)</option>
-            <option value="openrouter">OpenRouter (Multi-Model)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Temperature</label>
-          <input type="range" class="form-input" id="temperature" min="0" max="2" step="0.1" value="0.7">
-          <div class="flex justify-between text-xs text-tertiary mt-1">
-            <span>Precise (0)</span>
-            <span id="tempValue">0.7</span>
-            <span>Creative (2)</span>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Max Tokens</label>
-          <input type="number" class="form-input" id="maxTokens" value="4096" min="256" max="32768" step="256">
-        </div>
-      </div>
-      
-      <div class="card">
-        <div class="card-title mb-2">System Prompt</div>
-        <div class="form-group">
-          <label class="form-label">Machine Prompt (Optional)</label>
-          <textarea class="form-textarea" id="systemPrompt" placeholder="You are a helpful coding assistant..."></textarea>
-          <div class="form-hint">This prompt is prepended to every conversation. Leave empty for default behavior.</div>
-        </div>
-      </div>
-      
-      <div class="card">
-        <div class="card-title mb-2">Appearance</div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Auto-save Chats</div>
-            <div class="toggle-desc">Automatically save conversation history</div>
-          </div>
-          <div class="toggle-switch on" id="toggleAutosave" onclick="app.toggleSetting('autosave')"></div>
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Stream Responses</div>
-            <div class="toggle-desc">Show AI responses as they generate</div>
-          </div>
-          <div class="toggle-switch on" id="toggleStream" onclick="app.toggleSetting('stream')"></div>
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Confirm Commands</div>
-            <div class="toggle-desc">Ask before running terminal commands</div>
-          </div>
-          <div class="toggle-switch on" id="toggleConfirm" onclick="app.toggleSetting('confirmCommands')"></div>
-        </div>
-      </div>
-      
-      <button class="btn btn-primary btn-block" id="saveSettingsBtn">Save Settings</button>
-      <button class="btn btn-secondary btn-block mt-2" id="exportDataBtn">Export All Data</button>
-      <button class="btn btn-secondary btn-block mt-2" id="importDataBtn">Import Data</button>
-      <input type="file" id="importFile" class="hidden" accept=".json">
-      <button class="btn btn-secondary btn-block mt-2 danger" style="color: var(--danger);" id="clearAllBtn">Clear All Data</button>
-    </div>
-  </main>
-  
+
+  </div><!-- /panels -->
+
+  <!-- Bottom Nav -->
   <nav class="bottom-nav">
-    <button class="nav-item active" data-view="projects">
-      <span class="nav-icon">📁</span>
+    <button class="nav-item active" data-panel="projects">
+      <!-- Folder icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+      </svg>
       <span class="nav-label">Projects</span>
     </button>
-    <button class="nav-item" data-view="chat">
-      <span class="nav-icon">💬</span>
+    <button class="nav-item" data-panel="chat">
+      <!-- Chat bubble -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
       <span class="nav-label">Chat</span>
     </button>
-    <button class="nav-item" data-view="git">
-      <span class="nav-icon">🔀</span>
+    <button class="nav-item" data-panel="git">
+      <!-- Git branches / shuffle -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
+        <path d="M6 9v3m0 3v3M9 6h3a6 6 0 016 6v0"/>
+      </svg>
       <span class="nav-label">Git</span>
     </button>
-    <button class="nav-item" data-view="settings">
-      <span class="nav-icon">⚙️</span>
+    <button class="nav-item" data-panel="settings">
+      <!-- Gear -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
       <span class="nav-label">Settings</span>
     </button>
   </nav>
 </div>
 
-<!-- Project Modal -->
-<div class="modal-overlay" id="projectModal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title" id="projectModalTitle">New Project</div>
-      <button class="modal-close" onclick="app.hideModal('projectModal')">&times;</button>
+<!-- Toast container -->
+<div class="toast-wrap" id="toasts"></div>
+
+<!-- Sheet: New/Edit Project -->
+<div class="overlay" id="sheetProject">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title" id="sheetProjectTitle">New Project</div>
+      <button class="sheet-close" onclick="closeSheet('sheetProject')">&times;</button>
     </div>
     <div class="form-group">
-      <label class="form-label">Project Name</label>
-      <input type="text" class="form-input" id="projectName" placeholder="my-awesome-app">
+      <label class="form-label">Name</label>
+      <input type="text" class="form-input" id="projName" placeholder="my-app">
     </div>
     <div class="form-group">
       <label class="form-label">Description</label>
-      <input type="text" class="form-input" id="projectDesc" placeholder="A brief description...">
+      <input type="text" class="form-input" id="projDesc" placeholder="A brief description…">
     </div>
     <div class="form-group">
-      <label class="form-label">Tech Stack</label>
-      <select class="form-select" id="projectStack">
-        <option value="vanilla">Vanilla JS</option>
+      <label class="form-label">Tech stack</label>
+      <select class="form-select" id="projStack">
+        <option value="vanilla">Vanilla JS / HTML</option>
         <option value="react">React</option>
         <option value="vue">Vue</option>
         <option value="node">Node.js</option>
@@ -567,1208 +688,1032 @@
         <option value="other">Other</option>
       </select>
     </div>
-    <div class="form-group">
-      <label class="form-label">Initial Files (JSON)</label>
-      <textarea class="form-textarea" id="projectFiles" placeholder='{"index.js": "console.log(\\"Hello\\")"}'></textarea>
-    </div>
-    <button class="btn btn-primary btn-block" id="saveProjectBtn">Create Project</button>
+    <button class="btn btn-primary btn-block" id="btnSaveProject">Create Project</button>
   </div>
 </div>
 
-<!-- Toast Container -->
-<div class="toast-container" id="toastContainer"></div>
+<!-- Sheet: Commit -->
+<div class="overlay" id="sheetCommit">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Commit Changes</div>
+      <button class="sheet-close" onclick="closeSheet('sheetCommit')">&times;</button>
+    </div>
+    <div class="commit-area">
+      <div class="form-group">
+        <label class="form-label">Commit message</label>
+        <input type="text" class="form-input" id="commitMsg" placeholder="feat: update component…">
+      </div>
+      <button class="btn btn-primary btn-block" id="btnDoCommit">Commit</button>
+    </div>
+  </div>
+</div>
 
 <script>
-// ========================
-// IndexedDB Layer
-// ========================
-const DB_NAME = 'DevAI_DB';
-const DB_VERSION = 1;
+'use strict';
 
-class Database {
-  constructor() {
-    this.db = null;
-  }
-  
+// ════════════════════════════════════════════════
+// IndexedDB
+// ════════════════════════════════════════════════
+class DB {
+  constructor() { this._db = null; }
+
   async init() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => { this.db = request.result; resolve(this.db); };
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
+    return new Promise((res, rej) => {
+      const req = indexedDB.open('DevAI_v2', 1);
+      req.onerror = () => rej(req.error);
+      req.onsuccess = () => { this._db = req.result; res(); };
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
         if (!db.objectStoreNames.contains('projects')) {
-          const store = db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
-          store.createIndex('name', 'name', { unique: false });
+          db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
         }
         if (!db.objectStoreNames.contains('messages')) {
-          const store = db.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
-          store.createIndex('projectId', 'projectId', { unique: false });
-          store.createIndex('timestamp', 'timestamp', { unique: false });
+          const ms = db.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
+          ms.createIndex('projectId', 'projectId');
         }
         if (!db.objectStoreNames.contains('settings')) {
           db.createObjectStore('settings', { keyPath: 'key' });
         }
         if (!db.objectStoreNames.contains('files')) {
-          const store = db.createObjectStore('files', { keyPath: 'id', autoIncrement: true });
-          store.createIndex('projectId', 'projectId', { unique: false });
-          store.createIndex('path', 'path', { unique: false });
+          const fs = db.createObjectStore('files', { keyPath: 'id', autoIncrement: true });
+          fs.createIndex('projectId', 'projectId');
         }
       };
     });
   }
-  
-  async getAll(storeName) {
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(storeName, 'readonly');
-      const store = tx.objectStore(storeName);
-      const request = store.getAll();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+
+  _tx(store, mode, fn) {
+    return new Promise((res, rej) => {
+      const tx = this._db.transaction(store, mode);
+      const s = tx.objectStore(store);
+      const req = fn(s);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
     });
   }
-  
-  async get(storeName, key) {
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(storeName, 'readonly');
-      const store = tx.objectStore(storeName);
-      const request = store.get(key);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-  
-  async put(storeName, data) {
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(storeName, 'readwrite');
-      const store = tx.objectStore(storeName);
-      const request = store.put(data);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-  
-  async delete(storeName, key) {
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(storeName, 'readwrite');
-      const store = tx.objectStore(storeName);
-      const request = store.delete(key);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  }
-  
-  async query(storeName, indexName, value) {
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(storeName, 'readonly');
-      const store = tx.objectStore(storeName);
-      const index = store.index(indexName);
-      const request = index.getAll(value);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-  
-  async clear(storeName) {
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(storeName, 'readwrite');
-      const store = tx.objectStore(storeName);
-      const request = store.clear();
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+
+  getAll(store)       { return this._tx(store, 'readonly', s => s.getAll()); }
+  get(store, key)     { return this._tx(store, 'readonly', s => s.get(key)); }
+  put(store, data)    { return this._tx(store, 'readwrite', s => s.put(data)); }
+  del(store, key)     { return this._tx(store, 'readwrite', s => s.delete(key)); }
+  clear(store)        { return this._tx(store, 'readwrite', s => s.clear()); }
+
+  async byIndex(store, idx, val) {
+    return new Promise((res, rej) => {
+      const tx = this._db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).index(idx).getAll(val);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
     });
   }
 }
 
-// ========================
-// API Clients
-// ========================
+// ════════════════════════════════════════════════
+// Token-efficient API clients
+// ════════════════════════════════════════════════
+
+// Max chars we'll ever send per file context (≈750 tokens)
+const MAX_FILE_CHARS = 3000;
+// Max history messages sent to API
+const MAX_HISTORY = 10;
+
 class GroqClient {
-  constructor(apiKey) {
-    this.apiKey = apiKey;
-    this.baseUrl = 'https://api.groq.com/openai/v1';
+  constructor(key) {
+    this.key = key;
+    this.base = 'https://api.groq.com/openai/v1';
   }
-  
+
   async getModels() {
-    const res = await fetch(`${this.baseUrl}/models`, {
-      headers: { 'Authorization': `Bearer ${this.apiKey}` }
+    const r = await fetch(`${this.base}/models`, {
+      headers: { 'Authorization': `Bearer ${this.key}` }
     });
-    if (!res.ok) throw new Error('Failed to fetch Groq models');
-    const data = await res.json();
-    return data.data.map(m => ({ id: m.id, name: m.id, provider: 'groq' }));
+    if (!r.ok) throw new Error(`Groq models: ${r.status}`);
+    const d = await r.json();
+    // Only return coding-capable models
+    const ok = ['llama','mixtral','gemma','qwen','deepseek'];
+    return d.data
+      .filter(m => ok.some(k => m.id.toLowerCase().includes(k)))
+      .map(m => ({ id: m.id, label: `${m.id} (Groq)`, provider: 'groq' }));
   }
-  
-  async *chat(messages, model, temperature, maxTokens) {
-    const res = await fetch(`${this.baseUrl}/chat/completions`, {
+
+  async *stream(messages, model, maxTokens) {
+    const r = await fetch(`${this.base}/chat/completions`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${this.key}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model, messages, temperature, max_tokens: maxTokens,
-        stream: true, tools: this.getTools()
-      })
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, stream: true, temperature: 0.4 })
     });
-    if (!res.ok) throw new Error(`Groq API error: ${res.status}`);
-    
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') return;
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices[0]?.delta;
-            if (delta?.content) yield { type: 'content', data: delta.content };
-            if (delta?.tool_calls) yield { type: 'tool', data: delta.tool_calls };
-          } catch (e) {}
-        }
-      }
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Groq API ${r.status}`);
     }
-  }
-  
-  getTools() {
-    return [
-      {
-        type: 'function',
-        function: {
-          name: 'read_file',
-          description: 'Read the contents of a file',
-          parameters: {
-            type: 'object',
-            properties: {
-              path: { type: 'string', description: 'File path relative to project root' }
-            },
-            required: ['path']
-          }
-        }
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'write_file',
-          description: 'Write or update a file',
-          parameters: {
-            type: 'object',
-            properties: {
-              path: { type: 'string' },
-              content: { type: 'string' }
-            },
-            required: ['path', 'content']
-          }
-        }
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'run_command',
-          description: 'Run a terminal command',
-          parameters: {
-            type: 'object',
-            properties: {
-              command: { type: 'string', description: 'Shell command to execute' }
-            },
-            required: ['command']
-          }
-        }
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'git_status',
-          description: 'Get git repository status'
-        }
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'git_commit',
-          description: 'Commit changes',
-          parameters: {
-            type: 'object',
-            properties: {
-              message: { type: 'string' }
-            },
-            required: ['message']
-          }
-        }
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'search_files',
-          description: 'Search for files by name or content',
-          parameters: {
-            type: 'object',
-            properties: {
-              query: { type: 'string' },
-              type: { type: 'string', enum: ['name', 'content'] }
-            },
-            required: ['query', 'type']
-          }
-        }
-      }
-    ];
+    yield* parseSSE(r.body);
   }
 }
 
 class OpenRouterClient {
-  constructor(apiKey) {
-    this.apiKey = apiKey;
-    this.baseUrl = 'https://openrouter.ai/api/v1';
+  constructor(key) {
+    this.key = key;
+    this.base = 'https://openrouter.ai/api/v1';
   }
-  
+
   async getModels() {
-    const res = await fetch(`${this.baseUrl}/models`, {
-      headers: { 'Authorization': `Bearer ${this.apiKey}` }
+    const r = await fetch(`${this.base}/models`, {
+      headers: { 'Authorization': `Bearer ${this.key}` }
     });
-    if (!res.ok) throw new Error('Failed to fetch OpenRouter models');
-    const data = await res.json();
-    return data.data.map(m => ({ id: m.id, name: m.name || m.id, provider: 'openrouter' }));
+    if (!r.ok) throw new Error(`OpenRouter models: ${r.status}`);
+    const d = await r.json();
+    return d.data
+      .filter(m => m.context_length >= 8000)
+      .slice(0, 60)
+      .map(m => ({ id: m.id, label: `${m.name || m.id} (OR)`, provider: 'openrouter' }));
   }
-  
-  async *chat(messages, model, temperature, maxTokens) {
-    const res = await fetch(`${this.baseUrl}/chat/completions`, {
+
+  async *stream(messages, model, maxTokens) {
+    const r = await fetch(`${this.base}/chat/completions`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${this.key}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': window.location.href,
+        'HTTP-Referer': location.href,
         'X-Title': 'DevAI'
       },
-      body: JSON.stringify({
-        model, messages, temperature, max_tokens: maxTokens,
-        stream: true
-      })
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, stream: true, temperature: 0.4 })
     });
-    if (!res.ok) throw new Error(`OpenRouter API error: ${res.status}`);
-    
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') return;
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices[0]?.delta;
-            if (delta?.content) yield { type: 'content', data: delta.content };
-          } catch (e) {}
-        }
-      }
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error?.message || `OpenRouter API ${r.status}`);
+    }
+    yield* parseSSE(r.body);
+  }
+}
+
+async function* parseSSE(body) {
+  const reader = body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') return;
+      try {
+        const p = JSON.parse(data);
+        const c = p.choices?.[0]?.delta?.content;
+        if (c) yield c;
+      } catch {}
     }
   }
 }
 
-// ========================
+// ════════════════════════════════════════════════
 // GitHub API
-// ========================
-class GitHubAPI {
+// ════════════════════════════════════════════════
+class GitHub {
   constructor(token) {
     this.token = token;
-    this.baseUrl = 'https://api.github.com';
+    this.base = 'https://api.github.com';
   }
-  
-  async request(path, options = {}) {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      ...options,
+
+  async req(path, opts = {}) {
+    const r = await fetch(this.base + path, {
+      ...opts,
       headers: {
         'Authorization': `token ${this.token}`,
         'Accept': 'application/vnd.github.v3+json',
-        ...options.headers
+        ...opts.headers
       }
     });
-    if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
-    return res.json();
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.message || `GitHub ${r.status}`);
+    }
+    return r.json();
   }
-  
-  async getUser() {
-    return this.request('/user');
+
+  getUser()              { return this.req('/user'); }
+  getRepos()             { return this.req('/user/repos?sort=updated&per_page=50&affiliation=owner,collaborator'); }
+  getContents(o, r, p='') { return this.req(`/repos/${o}/${r}/contents/${p}`); }
+  getBranches(o, r)      { return this.req(`/repos/${o}/${r}/branches?per_page=20`); }
+  getCommits(o, r)       { return this.req(`/repos/${o}/${r}/commits?per_page=8`); }
+
+  async getFile(o, r, p) {
+    const d = await this.req(`/repos/${o}/${r}/contents/${p}`);
+    if (d.encoding === 'base64') return atob(d.content.replace(/\s/g, ''));
+    return d.content;
   }
-  
-  async getRepos() {
-    return this.request('/user/repos?sort=updated&per_page=100');
-  }
-  
-  async getRepoContents(owner, repo, path = '') {
-    return this.request(`/repos/${owner}/${repo}/contents/${path}`);
-  }
-  
-  async getFileContent(owner, repo, path) {
-    const data = await this.request(`/repos/${owner}/${repo}/contents/${path}`);
-    return atob(data.content);
-  }
-  
-  async createOrUpdateFile(owner, repo, path, content, message, sha = null) {
-    const body = { message, content: btoa(content), branch: 'main' };
+
+  async putFile(o, r, p, content, msg, sha = null) {
+    const body = { message: msg, content: btoa(unescape(encodeURIComponent(content))), branch: 'main' };
     if (sha) body.sha = sha;
-    return this.request(`/repos/${owner}/${repo}/contents/${path}`, {
+    return this.req(`/repos/${o}/${r}/contents/${p}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
   }
-  
-  async getCommits(owner, repo) {
-    return this.request(`/repos/${owner}/${repo}/commits?per_page=10`);
-  }
-  
-  async getBranches(owner, repo) {
-    return this.request(`/repos/${owner}/${repo}/branches`);
-  }
 }
 
-// ========================
-// Expert Roles
-// ========================
-const EXPERT_ROLES = {
-  frontend: `You are an expert Frontend Developer specializing in modern web technologies including React, Vue, TypeScript, CSS3, and WebGL. You write clean, accessible, performant code. You prefer functional components, hooks, and modern ES6+ syntax. Always consider mobile responsiveness, browser compatibility, and SEO.`,
-  backend: `You are an expert Backend Developer specializing in Node.js, Python, Go, databases (PostgreSQL, MongoDB, Redis), and microservices architecture. You design scalable RESTful and GraphQL APIs, implement robust authentication, and optimize database queries. You follow 12-factor app principles.`,
-  devops: `You are an expert DevOps Engineer specializing in Docker, Kubernetes, CI/CD pipelines, AWS/GCP/Azure, and infrastructure as code (Terraform). You optimize deployment workflows, monitor system health, and ensure high availability. You write efficient shell scripts and YAML configurations.`,
-  reviewer: `You are a meticulous Code Reviewer with expertise in software architecture, design patterns, and best practices. You analyze code for bugs, security vulnerabilities, performance issues, and maintainability. You provide constructive feedback with specific suggestions for improvement.`,
-  architect: `You are a System Architect who designs scalable, maintainable software systems. You excel at choosing the right technologies, defining clear boundaries between services, and creating extensible architectures. You consider trade-offs between complexity, performance, and time-to-market.`
+// ════════════════════════════════════════════════
+// Expert system prompts (compact)
+// ════════════════════════════════════════════════
+const ROLES = {
+  '': 'You are DevAI, a concise AI coding assistant. Give working code with brief explanations. Use markdown code blocks. Be direct.',
+  frontend: 'You are a Frontend Expert. Focus on React/Vue/vanilla JS, CSS, accessibility, performance. Write clean component code.',
+  backend: 'You are a Backend Expert. Focus on APIs, databases, auth, Node/Python. Write production-quality server code.',
+  reviewer: 'You are a Code Reviewer. Identify bugs, security issues, and improvements. Be specific with line references.',
+  architect: 'You are a System Architect. Design scalable systems, choose appropriate tech, explain trade-offs concisely.',
 };
 
-// ========================
-// App Controller
-// ========================
+// ════════════════════════════════════════════════
+// Sheet / overlay helpers
+// ════════════════════════════════════════════════
+function openSheet(id)  { document.getElementById(id).classList.add('open'); }
+function closeSheet(id) { document.getElementById(id).classList.remove('open'); }
+
+// ════════════════════════════════════════════════
+// Markdown renderer (minimal, safe)
+// ════════════════════════════════════════════════
+function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+function renderMd(raw) {
+  if (!raw) return '';
+  let s = esc(raw);
+  // fenced code blocks
+  s = s.replace(/```(\w+)?\n?([\s\S]*?)```/g, (_, lang, code) =>
+    `<pre><code>${code.trimEnd()}</code></pre>`);
+  // inline code
+  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  // bold / italic
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // headers
+  s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  s = s.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // lists
+  s = s.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+  s = s.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
+  s = s.replace(/<\/ul>\s*<ul>/g, '');
+  // links
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--accent)">$1</a>');
+  // line breaks
+  s = s.replace(/\n/g, '<br>');
+  return s;
+}
+
+// ════════════════════════════════════════════════
+// App
+// ════════════════════════════════════════════════
 class App {
   constructor() {
-    this.db = new Database();
-    this.settings = {};
+    this.db = new DB();
+    this.cfg = {};          // settings
     this.projects = [];
-    this.currentProject = null;
-    this.messages = [];
+    this.currentProjectId = null;
+    this.messages = [];     // current project messages
     this.models = [];
-    this.github = null;
-    this.gitUser = null;
-    this.repos = [];
-    this.currentRepo = null;
-    this.isGenerating = false;
+    this.activeRole = '';
     this.activeTools = new Set();
+    this.isGenerating = false;
+    this.gh = null;         // GitHub instance
+    this.ghUser = null;
+    this.repos = [];
+    this.currentRepo = null; // { owner, repo, branches, commits }
+    this.zipFiles = {};      // path -> content for zip projects
   }
-  
+
+  // ── Init ──────────────────────────────────────
   async init() {
     await this.db.init();
-    await this.loadSettings();
-    await this.loadProjects();
-    await this.loadModels();
-    this.setupEventListeners();
-    this.renderProjects();
-    this.applySettings();
-    this.showToast('DevAI loaded successfully', 'success');
-  }
-  
-  async loadSettings() {
-    const settings = await this.db.getAll('settings');
-    this.settings = settings.reduce((acc, s) => ({ ...acc, [s.key]: s.value }), {});
-    // Defaults
-    if (!this.settings.temperature) this.settings.temperature = 0.7;
-    if (!this.settings.maxTokens) this.settings.maxTokens = 4096;
-    if (!this.settings.autosave) this.settings.autosave = true;
-    if (!this.settings.stream) this.settings.stream = true;
-    if (!this.settings.confirmCommands) this.settings.confirmCommands = true;
-  }
-  
-  async saveSettings() {
-    const settingsToSave = [
-      { key: 'groqKey', value: document.getElementById('groqKey').value },
-      { key: 'openrouterKey', value: document.getElementById('openrouterKey').value },
-      { key: 'defaultProvider', value: document.getElementById('defaultProvider').value },
-      { key: 'temperature', value: parseFloat(document.getElementById('temperature').value) },
-      { key: 'maxTokens', value: parseInt(document.getElementById('maxTokens').value) },
-      { key: 'systemPrompt', value: document.getElementById('systemPrompt').value },
-      { key: 'autosave', value: this.settings.autosave },
-      { key: 'stream', value: this.settings.stream },
-      { key: 'confirmCommands', value: this.settings.confirmCommands },
-      { key: 'githubToken', value: document.getElementById('githubToken').value }
-    ];
-    for (const s of settingsToSave) {
-      await this.db.put('settings', s);
+    await this._loadSettings();
+    await this._loadProjects();
+    this._applySettings();
+    this._setupNav();
+    this._setupChat();
+    this._setupGit();
+    this._setupSettings();
+    this._setupProject();
+    this._renderProjects();
+    await this._loadModels();
+    // Auto-reconnect GitHub if token saved
+    if (this.cfg.githubToken) {
+      this.gh = new GitHub(this.cfg.githubToken);
+      this._tryAutoConnectGit();
     }
-    await this.loadSettings();
-    this.showToast('Settings saved', 'success');
+    this._toast('DevAI ready', 'success');
   }
-  
-  applySettings() {
-    document.getElementById('groqKey').value = this.settings.groqKey || '';
-    document.getElementById('openrouterKey').value = this.settings.openrouterKey || '';
-    document.getElementById('defaultProvider').value = this.settings.defaultProvider || 'groq';
-    document.getElementById('temperature').value = this.settings.temperature || 0.7;
-    document.getElementById('tempValue').textContent = this.settings.temperature || 0.7;
-    document.getElementById('maxTokens').value = this.settings.maxTokens || 4096;
-    document.getElementById('systemPrompt').value = this.settings.systemPrompt || '';
-    document.getElementById('githubToken').value = this.settings.githubToken || '';
-    this.updateToggle('autosave', this.settings.autosave);
-    this.updateToggle('stream', this.settings.stream);
-    this.updateToggle('confirmCommands', this.settings.confirmCommands);
+
+  // ── Settings ──────────────────────────────────
+  async _loadSettings() {
+    const rows = await this.db.getAll('settings');
+    this.cfg = rows.reduce((a, r) => ({ ...a, [r.key]: r.value }), {});
+    this.cfg.stream        ??= true;
+    this.cfg.autosave      ??= true;
+    this.cfg.confirmCommands ??= false;
+    this.cfg.maxTokens     ??= 2048;
   }
-  
-  updateToggle(key, value) {
-    const el = document.getElementById(`toggle${key.charAt(0).toUpperCase() + key.slice(1)}`);
-    if (el) el.classList.toggle('on', value);
+
+  _applySettings() {
+    document.getElementById('groqKey').value            = this.cfg.groqKey || '';
+    document.getElementById('openrouterKey').value      = this.cfg.openrouterKey || '';
+    document.getElementById('githubTokenSettings').value = this.cfg.githubToken || '';
+    document.getElementById('maxTokens').value          = this.cfg.maxTokens || 2048;
+    document.getElementById('systemPrompt').value       = this.cfg.systemPrompt || '';
+    this._setToggle('togStream',   this.cfg.stream);
+    this._setToggle('togAutosave', this.cfg.autosave);
+    this._setToggle('togConfirm',  this.cfg.confirmCommands);
   }
-  
-  toggleSetting(key) {
-    this.settings[key] = !this.settings[key];
-    this.updateToggle(key, this.settings[key]);
+
+  _setToggle(id, val) {
+    document.getElementById(id)?.classList.toggle('on', !!val);
   }
-  
-  async loadProjects() {
-    this.projects = await this.db.getAll('projects');
+
+  toggle(key) {
+    this.cfg[key] = !this.cfg[key];
+    const map = { stream: 'togStream', autosave: 'togAutosave', confirmCommands: 'togConfirm' };
+    this._setToggle(map[key], this.cfg[key]);
   }
-  
-  async loadModels() {
-    this.models = [];
-    const modelSelect = document.getElementById('modelSelect');
-    modelSelect.innerHTML = '<option value="">Select a model...</option>';
-    
-    // Fallback models if API fails
-    const fallbackModels = [
-      { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B (Groq)', provider: 'groq' },
-      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B (Groq)', provider: 'groq' },
-      { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B (Groq)', provider: 'groq' },
-      { id: 'gemma2-9b-it', name: 'Gemma 2 9B (Groq)', provider: 'groq' },
-      { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (OR)', provider: 'openrouter' },
-      { id: 'openai/gpt-4o', name: 'GPT-4o (OR)', provider: 'openrouter' },
-      { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B (OR)', provider: 'openrouter' },
-      { id: 'google/gemini-pro-1.5', name: 'Gemini Pro 1.5 (OR)', provider: 'openrouter' }
-    ];
-    
-    // Try fetching from APIs
-    if (this.settings.groqKey) {
-      try {
-        const client = new GroqClient(this.settings.groqKey);
-        const groqModels = await client.getModels();
-        this.models.push(...groqModels.map(m => ({ ...m, name: `${m.id} (Groq)` })));
-      } catch (e) { console.log('Groq fetch failed', e); }
+
+  async _saveSettings() {
+    const pairs = {
+      groqKey:         document.getElementById('groqKey').value.trim(),
+      openrouterKey:   document.getElementById('openrouterKey').value.trim(),
+      githubToken:     document.getElementById('githubTokenSettings').value.trim(),
+      maxTokens:       parseInt(document.getElementById('maxTokens').value) || 2048,
+      systemPrompt:    document.getElementById('systemPrompt').value.trim(),
+      stream:          this.cfg.stream,
+      autosave:        this.cfg.autosave,
+      confirmCommands: this.cfg.confirmCommands,
+    };
+    for (const [key, value] of Object.entries(pairs)) {
+      await this.db.put('settings', { key, value });
+      this.cfg[key] = value;
     }
-    if (this.settings.openrouterKey) {
-      try {
-        const client = new OpenRouterClient(this.settings.openrouterKey);
-        const orModels = await client.getModels();
-        this.models.push(...orModels.map(m => ({ ...m, name: `${m.name} (OR)` })));
-      } catch (e) { console.log('OpenRouter fetch failed', e); }
+    // Update GitHub client if token changed
+    if (pairs.githubToken) {
+      this.gh = new GitHub(pairs.githubToken);
     }
-    
-    if (this.models.length === 0) this.models = fallbackModels;
-    
-    this.models.forEach(m => {
-      const opt = document.createElement('option');
-      opt.value = JSON.stringify(m);
-      opt.textContent = m.name;
-      modelSelect.appendChild(opt);
-    });
+    await this._loadModels();
+    this._toast('Settings saved', 'success');
   }
-  
-  setupEventListeners() {
-    // Navigation
+
+  // ── Navigation ────────────────────────────────
+  _setupNav() {
     document.querySelectorAll('.nav-item').forEach(btn => {
-      btn.addEventListener('click', () => this.switchView(btn.dataset.view));
+      btn.addEventListener('click', () => this._switchPanel(btn.dataset.panel));
     });
-    
-    // New project
-    document.getElementById('newProjectBtn').addEventListener('click', () => {
-      document.getElementById('projectModalTitle').textContent = 'New Project';
-      document.getElementById('saveProjectBtn').textContent = 'Create Project';
-      document.getElementById('projectName').value = '';
-      document.getElementById('projectDesc').value = '';
-      document.getElementById('projectStack').value = 'vanilla';
-      document.getElementById('projectFiles').value = '';
-      this.showModal('projectModal');
+    document.getElementById('btnSettingsShortcut').addEventListener('click', () => {
+      this._switchPanel('settings');
     });
-    
-    // Save project
-    document.getElementById('saveProjectBtn').addEventListener('click', () => this.saveProject());
-    
-    // Settings
-    document.getElementById('settingsBtn').addEventListener('click', () => this.switchView('settings'));
-    document.getElementById('saveSettingsBtn').addEventListener('click', () => this.saveSettings());
-    document.getElementById('temperature').addEventListener('input', (e) => {
-      document.getElementById('tempValue').textContent = e.target.value;
-    });
-    
-    // Chat
-    document.getElementById('chatSendBtn').addEventListener('click', () => this.sendMessage());
-    document.getElementById('chatInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
-    });
-    document.getElementById('chatInput').addEventListener('input', function() {
-      this.style.height = 'auto';
-      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-    });
-    document.getElementById('clearChatBtn').addEventListener('click', () => this.clearChat());
-    
-    // Tool buttons
-    document.querySelectorAll('.chat-tool-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tool = btn.dataset.tool;
-        if (this.activeTools.has(tool)) {
-          this.activeTools.delete(tool);
-          btn.classList.remove('active');
-        } else {
-          this.activeTools.add(tool);
-          btn.classList.add('active');
-        }
-      });
-    });
-    
-    // Git
-    document.getElementById('connectGitBtn').addEventListener('click', () => this.connectGitHub());
-    document.getElementById('disconnectGitBtn').addEventListener('click', () => this.disconnectGitHub());
-    document.getElementById('repoSelect').addEventListener('change', (e) => this.selectRepo(e.target.value));
-    
-    // Data management
-    document.getElementById('exportDataBtn').addEventListener('click', () => this.exportData());
-    document.getElementById('importDataBtn').addEventListener('click', () => document.getElementById('importFile').click());
-    document.getElementById('importFile').addEventListener('change', (e) => this.importData(e.target.files[0]));
-    document.getElementById('clearAllBtn').addEventListener('click', () => this.clearAllData());
   }
-  
-  switchView(view) {
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+
+  _switchPanel(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById(`view-${view}`).classList.add('active');
-    document.querySelector(`[data-view="${view}"]`).classList.add('active');
-    
-    if (view === 'chat' && this.currentProject) {
-      this.loadChatMessages();
-    } else if (view === 'git') {
-      this.checkGitConnection();
+    document.getElementById(`panel-${name}`).classList.add('active');
+    document.querySelector(`[data-panel="${name}"]`)?.classList.add('active');
+    if (name === 'git') this._refreshGitUI();
+  }
+
+  // ── Models ────────────────────────────────────
+  async _loadModels() {
+    const sel = document.getElementById('modelSelect');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Select model…</option>';
+    this.models = [];
+
+    const fallback = [
+      { id: 'llama-3.3-70b-versatile',  label: 'Llama 3.3 70B (Groq)',    provider: 'groq' },
+      { id: 'llama-3.1-8b-instant',     label: 'Llama 3.1 8B Fast (Groq)',  provider: 'groq' },
+      { id: 'mixtral-8x7b-32768',       label: 'Mixtral 8x7B (Groq)',      provider: 'groq' },
+      { id: 'gemma2-9b-it',             label: 'Gemma 2 9B (Groq)',        provider: 'groq' },
+      { id: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (OR)', provider: 'openrouter' },
+      { id: 'openai/gpt-4o-mini',       label: 'GPT-4o Mini (OR)',         provider: 'openrouter' },
+      { id: 'google/gemini-flash-1.5',  label: 'Gemini Flash 1.5 (OR)',    provider: 'openrouter' },
+    ];
+
+    if (this.cfg.groqKey) {
+      try {
+        const client = new GroqClient(this.cfg.groqKey);
+        const ms = await client.getModels();
+        this.models.push(...ms);
+      } catch (e) { console.warn('Groq models:', e.message); }
+    }
+    if (this.cfg.openrouterKey) {
+      try {
+        const client = new OpenRouterClient(this.cfg.openrouterKey);
+        const ms = await client.getModels();
+        this.models.push(...ms);
+      } catch (e) { console.warn('OR models:', e.message); }
+    }
+    if (!this.models.length) this.models = fallback;
+
+    // Group by provider
+    const groups = {};
+    for (const m of this.models) {
+      (groups[m.provider] ||= []).push(m);
+    }
+    for (const [prov, ms] of Object.entries(groups)) {
+      const og = document.createElement('optgroup');
+      og.label = prov === 'groq' ? '⚡ Groq' : '🌐 OpenRouter';
+      for (const m of ms) {
+        const o = document.createElement('option');
+        o.value = JSON.stringify(m);
+        o.textContent = m.label;
+        og.appendChild(o);
+      }
+      sel.appendChild(og);
+    }
+    // Restore selection if still valid
+    if (prev) {
+      const opt = [...sel.options].find(o => o.value === prev);
+      if (opt) sel.value = prev;
+    }
+    // Auto-select first
+    if (!sel.value && sel.options.length > 1) {
+      sel.selectedIndex = 1;
     }
   }
-  
-  // Projects
-  async saveProject() {
-    const name = document.getElementById('projectName').value.trim();
-    if (!name) return this.showToast('Project name is required', 'error');
-    
-    const project = {
+
+  // ── Projects ──────────────────────────────────
+  _setupProject() {
+    document.getElementById('btnNewProject').addEventListener('click', () => {
+      document.getElementById('sheetProjectTitle').textContent = 'New Project';
+      document.getElementById('btnSaveProject').textContent = 'Create Project';
+      document.getElementById('projName').value = '';
+      document.getElementById('projDesc').value = '';
+      document.getElementById('projStack').value = 'vanilla';
+      openSheet('sheetProject');
+    });
+    document.getElementById('btnSaveProject').addEventListener('click', () => this._saveProject());
+    document.getElementById('projName').addEventListener('keydown', e => {
+      if (e.key === 'Enter') this._saveProject();
+    });
+  }
+
+  async _loadProjects() {
+    this.projects = await this.db.getAll('projects');
+    this.projects.sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async _saveProject() {
+    const name = document.getElementById('projName').value.trim();
+    if (!name) { this._toast('Name required', 'error'); return; }
+    const proj = {
       name,
-      description: document.getElementById('projectDesc').value,
-      stack: document.getElementById('projectStack').value,
+      desc: document.getElementById('projDesc').value.trim(),
+      stack: document.getElementById('projStack').value,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
-    
-    const id = await this.db.put('projects', project);
-    
-    // Create initial files if provided
-    const filesText = document.getElementById('projectFiles').value.trim();
-    if (filesText) {
-      try {
-        const files = JSON.parse(filesText);
-        for (const [path, content] of Object.entries(files)) {
-          await this.db.put('files', { projectId: id, path, content, updatedAt: Date.now() });
-        }
-      } catch (e) {
-        this.showToast('Invalid JSON for files', 'warning');
-      }
+    const id = await this.db.put('projects', proj);
+    await this._loadProjects();
+    this._renderProjects();
+    closeSheet('sheetProject');
+    this._toast('Project created', 'success');
+    this._selectProject(id);
+  }
+
+  async _deleteProject(id) {
+    if (!confirm('Delete this project and its messages?')) return;
+    await this.db.del('projects', id);
+    const msgs = await this.db.byIndex('messages', 'projectId', id);
+    for (const m of msgs) await this.db.del('messages', m.id);
+    if (this.currentProjectId === id) {
+      this.currentProjectId = null;
+      this.messages = [];
     }
-    
-    await this.loadProjects();
-    this.renderProjects();
-    this.hideModal('projectModal');
-    this.showToast('Project created', 'success');
-    this.selectProject(id);
+    await this._loadProjects();
+    this._renderProjects();
+    this._toast('Project deleted');
   }
-  
-  async updateProject(id, updates) {
-    const project = await this.db.get('projects', id);
-    if (!project) return;
-    Object.assign(project, updates, { updatedAt: Date.now() });
-    await this.db.put('projects', project);
-    await this.loadProjects();
-    this.renderProjects();
-  }
-  
-  async deleteProject(id) {
-    if (!confirm('Delete this project and all its data?')) return;
-    await this.db.delete('projects', id);
-    await this.db.clear('messages'); // Simplified: clear all messages
-    await this.loadProjects();
-    this.renderProjects();
-    if (this.currentProject === id) {
-      this.currentProject = null;
-      document.getElementById('chatMessages').innerHTML = '';
-    }
-    this.showToast('Project deleted', 'success');
-  }
-  
-  renderProjects() {
-    const container = document.getElementById('projectsList');
+
+  _renderProjects() {
+    const list = document.getElementById('projectsList');
     const empty = document.getElementById('projectsEmpty');
-    
-    if (this.projects.length === 0) {
-      container.innerHTML = '';
+    if (!this.projects.length) {
+      list.innerHTML = '';
       empty.classList.remove('hidden');
       return;
     }
-    
     empty.classList.add('hidden');
-    container.innerHTML = this.projects.map(p => `
-      <div class="card" style="cursor: pointer;" onclick="app.selectProject(${p.id})">
-        <div class="card-header">
-          <div>
-            <div class="card-title">${this.escapeHtml(p.name)}</div>
-            <div class="card-meta">${this.escapeHtml(p.description || 'No description')} · ${p.stack} · ${this.timeAgo(p.updatedAt)}</div>
-          </div>
-          <div class="card-actions" onclick="event.stopPropagation()">
-            <button class="btn-sm" onclick="app.editProject(${p.id})">Edit</button>
-            <button class="btn-sm danger" onclick="app.deleteProject(${p.id})">Delete</button>
-          </div>
+    list.innerHTML = this.projects.map(p => `
+      <div class="project-card ${this.currentProjectId === p.id ? 'active' : ''}" onclick="app._selectProject(${p.id})">
+        <div class="project-card-info">
+          <div class="project-card-name">${esc(p.name)}</div>
+          <div class="project-card-meta">${esc(p.desc || 'No description')} · ${p.stack} · ${this._ago(p.updatedAt)}</div>
+        </div>
+        <div class="project-card-actions" onclick="event.stopPropagation()">
+          <button class="btn-sm danger" onclick="app._deleteProject(${p.id})">Delete</button>
         </div>
       </div>
     `).join('');
   }
-  
-  async selectProject(id) {
-    this.currentProject = id;
-    const project = await this.db.get('projects', id);
-    this.showToast(`Opened: ${project.name}`, 'success');
-    this.switchView('chat');
-    await this.loadChatMessages();
+
+  async _selectProject(id) {
+    this.currentProjectId = id;
+    const proj = await this.db.get('projects', id);
+    this._renderProjects();
+    this._toast(`Opened: ${proj.name}`, 'success');
+    this._switchPanel('chat');
+    await this._loadMessages();
+    this._renderMessages();
   }
-  
-  editProject(id) {
-    const project = this.projects.find(p => p.id === id);
-    if (!project) return;
-    document.getElementById('projectModalTitle').textContent = 'Edit Project';
-    document.getElementById('saveProjectBtn').textContent = 'Update Project';
-    document.getElementById('projectName').value = project.name;
-    document.getElementById('projectDesc').value = project.description || '';
-    document.getElementById('projectStack').value = project.stack || 'vanilla';
-    this.showModal('projectModal');
+
+  // ── Chat ──────────────────────────────────────
+  _setupChat() {
+    // Role tabs
+    document.getElementById('roleTabs').addEventListener('click', e => {
+      const tab = e.target.closest('.role-tab');
+      if (!tab) return;
+      document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      this.activeRole = tab.dataset.role;
+    });
+
+    // Tool buttons
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const t = btn.dataset.tool;
+        if (this.activeTools.has(t)) { this.activeTools.delete(t); btn.classList.remove('on'); }
+        else { this.activeTools.add(t); btn.classList.add('on'); }
+      });
+    });
+
+    // Send
+    document.getElementById('sendBtn').addEventListener('click', () => this._send());
+    document.getElementById('chatInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this._send(); }
+    });
+    document.getElementById('chatInput').addEventListener('input', function () {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    });
   }
-  
-  // Chat
-  async loadChatMessages() {
-    if (!this.currentProject) return;
-    this.messages = await this.db.query('messages', 'projectId', this.currentProject);
+
+  async _loadMessages() {
+    if (!this.currentProjectId) { this.messages = []; return; }
+    this.messages = await this.db.byIndex('messages', 'projectId', this.currentProjectId);
     this.messages.sort((a, b) => a.timestamp - b.timestamp);
-    this.renderMessages();
   }
-  
-  renderMessages() {
-    const container = document.getElementById('chatMessages');
-    if (this.messages.length === 0) {
-      container.innerHTML = `
+
+  _renderMessages() {
+    const el = document.getElementById('chatMessages');
+    if (!this.messages.length) {
+      el.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">🤖</div>
-          <div class="empty-state-title">Start a conversation</div>
-          <div class="empty-state-desc">Ask the AI to help you write code, review files, or run commands.</div>
-        </div>
-      `;
+          <div class="empty-icon">🤖</div>
+          <div class="empty-title">Start coding with AI</div>
+          <div class="empty-desc">Ask anything — code, reviews, explanations, debugging.</div>
+        </div>`;
       return;
     }
-    
-    container.innerHTML = this.messages.map(m => this.renderMessage(m)).join('');
-    container.scrollTop = container.scrollHeight;
+    el.innerHTML = this.messages.map(m => this._msgHTML(m)).join('');
+    el.scrollTop = el.scrollHeight;
   }
-  
-  renderMessage(msg) {
-    const isUser = msg.role === 'user';
-    const avatar = isUser ? 'You' : 'AI';
-    const content = this.formatMarkdown(msg.content || '');
+
+  _msgHTML(m) {
+    const isUser = m.role === 'user';
     return `
-      <div class="message ${msg.role}" data-id="${msg.id || ''}">
-        <div class="message-avatar">${avatar}</div>
-        <div class="message-content">
-          <div class="message-header">
-            <span class="message-name">${isUser ? 'You' : 'Assistant'}</span>
-            <span class="message-time">${this.formatTime(msg.timestamp)}</span>
-          </div>
-          <div class="message-bubble">${content}</div>
+      <div class="message ${m.role}">
+        <div class="msg-avatar">${isUser ? 'You' : 'AI'}</div>
+        <div class="msg-body">
+          <div class="msg-name">${isUser ? 'You' : 'Assistant'}</div>
+          <div class="msg-bubble">${renderMd(m.content)}</div>
         </div>
-      </div>
-    `;
+      </div>`;
   }
-  
-  async sendMessage() {
+
+  async _send() {
     if (this.isGenerating) return;
     const input = document.getElementById('chatInput');
     const text = input.value.trim();
     if (!text) return;
-    if (!this.currentProject) {
-      this.showToast('Select a project first', 'warning');
-      this.switchView('projects');
+
+    if (!this.currentProjectId) {
+      this._toast('Select a project first', 'warning');
+      this._switchPanel('projects');
       return;
     }
-    
-    const modelSelect = document.getElementById('modelSelect');
-    const modelData = modelSelect.value ? JSON.parse(modelSelect.value) : null;
-    if (!modelData) {
-      this.showToast('Select a model first', 'warning');
-      return;
-    }
-    
-    const apiKey = modelData.provider === 'groq' ? this.settings.groqKey : this.settings.openrouterKey;
+
+    const selEl = document.getElementById('modelSelect');
+    if (!selEl.value) { this._toast('Select a model first', 'warning'); return; }
+    const model = JSON.parse(selEl.value);
+
+    const apiKey = model.provider === 'groq' ? this.cfg.groqKey : this.cfg.openrouterKey;
     if (!apiKey) {
-      this.showToast(`Add your ${modelData.provider} API key in settings`, 'error');
-      this.switchView('settings');
+      this._toast(`Add your ${model.provider === 'groq' ? 'Groq' : 'OpenRouter'} API key in Settings`, 'error');
+      this._switchPanel('settings');
       return;
     }
-    
-    // Add user message
+
+    // Save user message
     const userMsg = {
-      projectId: this.currentProject,
+      projectId: this.currentProjectId,
       role: 'user',
       content: text,
       timestamp: Date.now()
     };
-    userMsg.id = await this.db.put('messages', userMsg);
+    if (this.cfg.autosave) userMsg.id = await this.db.put('messages', userMsg);
     this.messages.push(userMsg);
-    this.renderMessages();
+
     input.value = '';
     input.style.height = 'auto';
-    
-    // Build messages for API
-    const expertRole = document.getElementById('expertRoleSelect').value;
-    const systemPrompt = this.buildSystemPrompt(expertRole);
-    const apiMessages = [
-      { role: 'system', content: systemPrompt },
-      ...this.messages.slice(-20).map(m => ({ role: m.role, content: m.content }))
-    ];
-    
-    // Add assistant placeholder
-    const assistantMsg = {
-      projectId: this.currentProject,
-      role: 'assistant',
-      content: '',
-timestamp: Date.now()
-    };
-    assistantMsg.id = await this.db.put('messages', assistantMsg);
-    this.messages.push(assistantMsg);
-    
-    this.isGenerating = true;
-    document.getElementById('chatSendBtn').disabled = true;
-    
-    try {
-      const client = modelData.provider === 'groq' 
-        ? new GroqClient(apiKey) 
-        : new OpenRouterClient(apiKey);
-      
-      const container = document.getElementById('chatMessages');
-      const msgEl = document.createElement('div');
-      msgEl.className = 'message assistant';
-      msgEl.innerHTML = `
-        <div class="message-avatar">AI</div>
-        <div class="message-content">
-          <div class="message-header">
-            <span class="message-name">Assistant</span>
-            <span class="message-time">${this.formatTime(Date.now())}</span>
-          </div>
-          <div class="message-bubble" id="streaming-${assistantMsg.id}">
-            <div class="loading-dots"><span></span><span></span><span></span></div>
-          </div>
-        </div>
-      `;
-      container.appendChild(msgEl);
-      container.scrollTop = container.scrollHeight;
-      
-      const bubble = document.getElementById(`streaming-${assistantMsg.id}`);
-      let fullContent = '';
-      
-      if (this.settings.stream !== false) {
-        for await (const chunk of client.chat(apiMessages, modelData.id, this.settings.temperature, this.settings.maxTokens)) {
-          if (chunk.type === 'content') {
-            fullContent += chunk.data;
-            bubble.innerHTML = this.formatMarkdown(fullContent);
-            container.scrollTop = container.scrollHeight;
-          }
-        }
-      } else {
-        // Non-streaming fallback
-        const res = await fetch(`${client.baseUrl}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: modelData.id,
-            messages: apiMessages,
-            temperature: this.settings.temperature,
-            max_tokens: this.settings.maxTokens
-          })
-        });
-        const data = await res.json();
-        fullContent = data.choices[0]?.message?.content || '';
-        bubble.innerHTML = this.formatMarkdown(fullContent);
-      }
-      
-      assistantMsg.content = fullContent;
-      await this.db.put('messages', assistantMsg);
-      
-      // Process tool calls if present in content
-      await this.processToolCalls(fullContent);
-      
-    } catch (error) {
-      this.showToast(error.message, 'error');
-      assistantMsg.content = `Error: ${error.message}`;
-      await this.db.put('messages', assistantMsg);
-      this.renderMessages();
-    } finally {
-      this.isGenerating = false;
-      document.getElementById('chatSendBtn').disabled = false;
-    }
-  }
-  
-  buildSystemPrompt(expertRole) {
-    const parts = [];
-    if (this.settings.systemPrompt) parts.push(this.settings.systemPrompt);
-    if (expertRole && EXPERT_ROLES[expertRole]) parts.push(EXPERT_ROLES[expertRole]);
-    
-    parts.push(`You are DevAI, an AI coding assistant. You help users write, review, and manage code. You can use tools by mentioning them in your response:
-- To read a file: say "I'll read [filepath]"
-- To write a file: provide code blocks with the filename
-- To run a command: say "Running: \`command\`"
-- For git operations: mention the git command needed
 
-Be concise but thorough. Always explain your reasoning.`);
-    
-    return parts.join('\n\n');
-  }
-  
-  async processToolCalls(content) {
-    // Simple regex-based tool detection (since we can't do real function calling without complex parsing)
-    const fileWriteMatch = content.match(/```(?:\w+)?\n?\/\/\s*([\w\/\.]+)\n([\s\S]*?)```/);
-    if (fileWriteMatch && this.currentProject) {
-      const [, path, code] = fileWriteMatch;
-      await this.db.put('files', {
-        projectId: this.currentProject,
-        path,
-        content: code.trim(),
-        updatedAt: Date.now()
-      });
-      this.showToast(`Saved: ${path}`, 'success');
+    // Build compact API payload
+    // System prompt (compact, ~150 tokens)
+    const sysLines = [ROLES[this.activeRole] || ROLES['']];
+    if (this.cfg.systemPrompt) sysLines.push(this.cfg.systemPrompt);
+    if (this.activeTools.size) {
+      sysLines.push(`Active tools: ${[...this.activeTools].join(', ')}. When relevant, describe what you'd do with these tools.`);
     }
-  }
-  
-  async clearChat() {
-    if (!this.currentProject) return;
-    if (!confirm('Clear all messages in this project?')) return;
-    const msgs = await this.db.query('messages', 'projectId', this.currentProject);
-    for (const m of msgs) await this.db.delete('messages', m.id);
-    this.messages = [];
-    this.renderMessages();
-    this.showToast('Chat cleared', 'success');
-  }
-  
-  // GitHub Integration
-  async connectGitHub() {
-    const token = document.getElementById('githubToken').value.trim();
-    if (!token) return this.showToast('Enter a GitHub token', 'error');
-    
+
+    // Only last MAX_HISTORY messages to keep tokens low
+    const histSlice = this.messages.slice(-MAX_HISTORY).map(m => ({
+      role: m.role,
+      content: this._truncateContent(m.content)
+    }));
+
+    const apiMsgs = [{ role: 'system', content: sysLines.join('\n') }, ...histSlice];
+
+    // Render user bubble immediately
+    const el = document.getElementById('chatMessages');
+    // Remove empty state if present
+    el.querySelector('.empty-state')?.remove();
+    const userEl = document.createElement('div');
+    userEl.innerHTML = this._msgHTML(userMsg);
+    el.appendChild(userEl.firstElementChild);
+
+    // Streaming assistant bubble
+    const aEl = document.createElement('div');
+    aEl.className = 'message assistant';
+    aEl.innerHTML = `
+      <div class="msg-avatar">AI</div>
+      <div class="msg-body">
+        <div class="msg-name">Assistant</div>
+        <div class="msg-bubble" id="streamBubble">
+          <div class="loading-dots"><span></span><span></span><span></span></div>
+        </div>
+      </div>`;
+    el.appendChild(aEl);
+    el.scrollTop = el.scrollHeight;
+
+    const bubble = document.getElementById('streamBubble');
+    this.isGenerating = true;
+    document.getElementById('sendBtn').disabled = true;
+
+    let full = '';
     try {
-      this.github = new GitHubAPI(token);
-      this.gitUser = await this.github.getUser();
-      this.repos = await this.github.getRepos();
-      
-      document.getElementById('gitEmpty').classList.add('hidden');
-      document.getElementById('gitConnected').classList.remove('hidden');
-      document.getElementById('gitUserName').textContent = this.gitUser.name || this.gitUser.login;
-      document.getElementById('gitUserLogin').textContent = `@${this.gitUser.login}`;
-      
-      const repoSelect = document.getElementById('repoSelect');
-      repoSelect.innerHTML = '<option value="">Select a repository...</option>';
-      this.repos.forEach(repo => {
-        const opt = document.createElement('option');
-        opt.value = JSON.stringify({ owner: repo.owner.login, repo: repo.name });
-        opt.textContent = repo.full_name;
-        repoSelect.appendChild(opt);
+      const client = model.provider === 'groq'
+        ? new GroqClient(apiKey)
+        : new OpenRouterClient(apiKey);
+
+      for await (const chunk of client.stream(apiMsgs, model.id, this.cfg.maxTokens)) {
+        full += chunk;
+        bubble.innerHTML = renderMd(full);
+        el.scrollTop = el.scrollHeight;
+      }
+      if (!full) full = '*(No response — check your API key and model)*';
+    } catch (err) {
+      full = `**Error:** ${err.message}`;
+      bubble.innerHTML = renderMd(full);
+      this._toast(err.message, 'error');
+    }
+
+    // Save assistant message
+    const aMsg = {
+      projectId: this.currentProjectId,
+      role: 'assistant',
+      content: full,
+      timestamp: Date.now()
+    };
+    if (this.cfg.autosave) aMsg.id = await this.db.put('messages', aMsg);
+    this.messages.push(aMsg);
+
+    // Auto-detect file writes from response
+    this._tryExtractFiles(full);
+
+    this.isGenerating = false;
+    document.getElementById('sendBtn').disabled = false;
+  }
+
+  // Truncate long content before sending (preserve head + tail)
+  _truncateContent(content) {
+    if (!content || content.length <= MAX_FILE_CHARS) return content;
+    const half = Math.floor(MAX_FILE_CHARS / 2);
+    return content.slice(0, half) + '\n…[truncated]…\n' + content.slice(-half);
+  }
+
+  // Auto-save files mentioned in code blocks (// filename.ext)
+  async _tryExtractFiles(content) {
+    const rx = /```(?:\w+)?\n\/\/ ?([\w\-./]+\.\w+)\n([\s\S]*?)```/g;
+    let m;
+    while ((m = rx.exec(content)) !== null) {
+      const [, path, code] = m;
+      await this.db.put('files', {
+        projectId: this.currentProjectId,
+        path, content: code.trimEnd(), updatedAt: Date.now()
       });
-      
+      this._toast(`Saved file: ${path}`, 'success');
+    }
+  }
+
+  // ── GitHub ────────────────────────────────────
+  _setupGit() {
+    document.getElementById('btnConnectGit').addEventListener('click', () => this._connectGit());
+    document.getElementById('btnDisconnectGit').addEventListener('click', () => this._disconnectGit());
+    document.getElementById('btnPull').addEventListener('click', () =>
+      this._toast('Pull: use your local git CLI for actual pulls', 'warning'));
+    document.getElementById('btnPush').addEventListener('click', () =>
+      this._toast('Push: use your local git CLI for actual pushes', 'warning'));
+    document.getElementById('btnCommit').addEventListener('click', () => openSheet('sheetCommit'));
+    document.getElementById('btnDoCommit').addEventListener('click', () => this._doCommit());
+    document.getElementById('zipUpload').addEventListener('change', e => this._loadZip(e.target.files[0]));
+  }
+
+  async _connectGit() {
+    const token = document.getElementById('githubTokenInput').value.trim()
+      || document.getElementById('githubTokenSettings').value.trim()
+      || this.cfg.githubToken;
+    if (!token) { this._toast('Enter a GitHub token', 'error'); return; }
+
+    try {
+      this.gh = new GitHub(token);
+      this.ghUser = await this.gh.getUser();
+      this.repos = await this.gh.getRepos();
+      // Persist token
       await this.db.put('settings', { key: 'githubToken', value: token });
-      this.settings.githubToken = token;
-      this.showToast('GitHub connected', 'success');
-    } catch (error) {
-      this.showToast(`GitHub error: ${error.message}`, 'error');
+      this.cfg.githubToken = token;
+      document.getElementById('githubTokenSettings').value = token;
+      this._showGitConnected();
+      this._toast(`Connected as ${this.ghUser.login}`, 'success');
+    } catch (e) {
+      this._toast(`GitHub: ${e.message}`, 'error');
     }
   }
-  
-  disconnectGitHub() {
-    this.github = null;
-    this.gitUser = null;
-    this.repos = [];
-    this.currentRepo = null;
-    document.getElementById('gitEmpty').classList.remove('hidden');
+
+  async _tryAutoConnectGit() {
+    try {
+      this.ghUser = await this.gh.getUser();
+      this.repos = await this.gh.getRepos();
+      this._showGitConnected();
+    } catch {}
+  }
+
+  _showGitConnected() {
+    document.getElementById('gitNotConnected').classList.add('hidden');
+    document.getElementById('gitConnected').classList.remove('hidden');
+    document.getElementById('gitUserName').textContent = this.ghUser.name || this.ghUser.login;
+    document.getElementById('gitUserLogin').textContent = `@${this.ghUser.login}`;
+    this._renderRepoList();
+  }
+
+  _disconnectGit() {
+    this.gh = null; this.ghUser = null; this.repos = []; this.currentRepo = null;
+    this.cfg.githubToken = '';
+    this.db.put('settings', { key: 'githubToken', value: '' });
+    document.getElementById('gitNotConnected').classList.remove('hidden');
     document.getElementById('gitConnected').classList.add('hidden');
-    document.getElementById('githubToken').value = '';
-    this.showToast('GitHub disconnected', 'success');
+    document.getElementById('githubTokenInput').value = '';
+    document.getElementById('githubTokenSettings').value = '';
+    this._toast('Disconnected from GitHub');
   }
-  
-  async checkGitConnection() {
-    if (this.github && this.gitUser) {
-      document.getElementById('gitEmpty').classList.add('hidden');
-      document.getElementById('gitConnected').classList.remove('hidden');
-    }
+
+  _renderRepoList() {
+    const el = document.getElementById('repoList');
+    el.innerHTML = this.repos.map(r => `
+      <div class="repo-card ${this.currentRepo?.repo === r.name ? 'selected' : ''}"
+           onclick="app._selectRepo('${r.owner.login}','${r.name}')">
+        <div class="repo-name">${esc(r.full_name)}</div>
+        <div class="repo-meta">${r.private ? '🔒 Private' : '🌐 Public'} · ${r.default_branch}</div>
+      </div>
+    `).join('');
   }
-  
-  async selectRepo(value) {
-    if (!value) return;
-    this.currentRepo = JSON.parse(value);
-    const { owner, repo } = this.currentRepo;
-    
+
+  async _selectRepo(owner, repo) {
+    this.currentRepo = { owner, repo };
+    this._renderRepoList();
+    document.getElementById('repoDetail').classList.remove('hidden');
+    document.getElementById('repoDetailName').textContent = `${owner}/${repo}`;
+    document.getElementById('fileTree').innerHTML = '<div class="text-tertiary text-sm">Loading…</div>';
+    document.getElementById('commitList').innerHTML = '';
+
     try {
       const [contents, commits, branches] = await Promise.all([
-        this.github.getRepoContents(owner, repo),
-        this.github.getCommits(owner, repo),
-        this.github.getBranches(owner, repo)
+        this.gh.getContents(owner, repo),
+        this.gh.getCommits(owner, repo),
+        this.gh.getBranches(owner, repo),
       ]);
-      
-      const container = document.getElementById('repoDetails');
-      container.innerHTML = `
-        <div class="card">
-          <div class="card-title mb-2">Repository: ${owner}/${repo}</div>
-          <div class="git-status">
-            <div class="git-status-item">
-              <div class="git-status-dot" style="background: var(--accent);"></div>
-              <span>${branches.length} branches</span>
-            </div>
-            <div class="git-status-item">
-              <div class="git-status-dot" style="background: var(--positive);"></div>
-              <span>${commits.length} recent commits</span>
-            </div>
-          </div>
-          <div class="mt-4">
-            <div class="form-label">Files</div>
-            <div class="file-tree">
-              ${contents.map(item => `
-                <div class="file-tree-item" onclick="app.readRepoFile('${item.path}')">
-                  <span class="file-tree-icon">${item.type === 'dir' ? '📁' : '📄'}</span>
-                  <span>${item.name}</span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          <div class="mt-4">
-            <div class="form-label">Recent Commits</div>
-            <div class="git-commit-list">
-              ${commits.slice(0, 5).map(c => `
-                <div class="git-commit-item">
-                  <div class="git-commit-msg">${c.commit.message.split('\\n')[0]}</div>
-                  <div class="git-commit-meta">${c.commit.author.name} · ${this.timeAgo(new Date(c.commit.author.date))}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          <div class="mt-4 flex gap-2">
-            <button class="btn btn-sm" onclick="app.pullRepo()">Pull</button>
-            <button class="btn btn-sm" onclick="app.showCommitModal()">Commit</button>
-            <button class="btn btn-sm" onclick="app.pushRepo()">Push</button>
+      this.currentRepo.sha = null;
+
+      const treeEl = document.getElementById('fileTree');
+      treeEl.innerHTML = contents.map(item => `
+        <div class="file-item" onclick="app._openFile('${esc(item.path)}','${item.type}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--text-tertiary)">
+            ${item.type === 'dir'
+              ? '<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>'
+              : '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>'}
+          </svg>
+          ${esc(item.name)}
+        </div>
+      `).join('');
+
+      const commitEl = document.getElementById('commitList');
+      commitEl.innerHTML = commits.slice(0, 6).map(c => `
+        <div style="padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;">
+          <div style="font-weight:500">${esc(c.commit.message.split('\n')[0])}</div>
+          <div class="text-tertiary" style="font-size:11px;margin-top:2px">
+            ${esc(c.commit.author.name)} · ${this._ago(new Date(c.commit.author.date))}
           </div>
         </div>
-      `;
-    } catch (error) {
-      this.showToast(error.message, 'error');
+      `).join('');
+
+      // Update repo meta line
+      document.getElementById('repoDetailName').textContent =
+        `${owner}/${repo} · ${branches.length} branches · ${commits.length} commits`;
+
+    } catch (e) {
+      this._toast(e.message, 'error');
+      document.getElementById('fileTree').innerHTML = `<div class="text-danger text-sm">${esc(e.message)}</div>`;
     }
   }
-  
-  async readRepoFile(path) {
+
+  async _openFile(path, type) {
+    if (type === 'dir') {
+      this._toast('Directory browsing: click files only', 'warning');
+      return;
+    }
     if (!this.currentRepo) return;
+    const { owner, repo } = this.currentRepo;
     try {
-      const content = await this.github.getFileContent(this.currentRepo.owner, this.currentRepo.repo, path);
-      // Add to chat as context
+      let content = await this.gh.getFile(owner, repo, path);
+      // Truncate if huge before sending to AI
+      const truncated = content.length > MAX_FILE_CHARS;
+      if (truncated) content = content.slice(0, MAX_FILE_CHARS) + '\n\n…[file truncated for context]…';
+
       const msg = {
-        projectId: this.currentProject,
+        projectId: this.currentProjectId || 0,
         role: 'user',
-        content: `File: ${path}\n\n\`\`\`\n${content}\n\`\`\`\n\nPlease review this file.`,
+        content: `File from GitHub: \`${path}\`\n\`\`\`\n${content}\n\`\`\`\n\nPlease review this file.`,
         timestamp: Date.now()
       };
-      msg.id = await this.db.put('messages', msg);
+      if (this.currentProjectId && this.cfg.autosave) msg.id = await this.db.put('messages', msg);
       this.messages.push(msg);
-      this.renderMessages();
-      this.switchView('chat');
-    } catch (error) {
-      this.showToast(error.message, 'error');
+      this._switchPanel('chat');
+      this._renderMessages();
+      if (truncated) this._toast(`File truncated to ${MAX_FILE_CHARS} chars for context`, 'warning');
+    } catch (e) {
+      this._toast(e.message, 'error');
     }
   }
-  
-  async pullRepo() {
-    this.showToast('Pull initiated (simulated - use git CLI for actual pull)', 'success');
+
+  async _doCommit() {
+    const msg = document.getElementById('commitMsg').value.trim();
+    if (!msg) { this._toast('Enter a commit message', 'error'); return; }
+    if (!this.currentRepo) { this._toast('Select a repository first', 'error'); return; }
+    closeSheet('sheetCommit');
+    // Real commit: we can commit files that were written by AI to the DB
+    // Simplified: inform user
+    this._toast(`Commit "${msg}" — to commit real changes, push your local edits with git CLI`, 'warning');
   }
-  
-  async pushRepo() {
-    this.showToast('Push initiated (simulated - use git CLI for actual push)', 'success');
+
+  _refreshGitUI() {
+    if (this.ghUser) {
+      this._showGitConnected();
+    }
   }
-  
-  showCommitModal() {
-    const message = prompt('Enter commit message:');
-    if (message) this.commitRepo(message);
+
+  // ── ZIP project loader ────────────────────────
+  async _loadZip(file) {
+    if (!file) return;
+    // Use JSZip if available, else parse as text
+    this._toast('Reading ZIP…');
+    try {
+      // Dynamically load JSZip
+      if (!window.JSZip) {
+        await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      const zip = await JSZip.loadAsync(file);
+      const proj = {
+        name: file.name.replace('.zip', ''),
+        desc: 'Loaded from ZIP',
+        stack: 'other',
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      const projId = await this.db.put('projects', proj);
+
+      let count = 0;
+      for (const [path, entry] of Object.entries(zip.files)) {
+        if (entry.dir) continue;
+        if (path.startsWith('__MACOSX') || path.endsWith('.DS_Store')) continue;
+        try {
+          const content = await entry.async('string');
+          await this.db.put('files', { projectId: projId, path, content, updatedAt: Date.now() });
+          count++;
+        } catch {}
+      }
+
+      await this._loadProjects();
+      this._renderProjects();
+      this._toast(`ZIP loaded: ${count} files`, 'success');
+      this._selectProject(projId);
+    } catch (e) {
+      this._toast(`ZIP error: ${e.message}`, 'error');
+    }
   }
-  
-  async commitRepo(message) {
-    if (!this.currentRepo) return;
-    this.showToast(`Commit "${message}" created (simulated)`, 'success');
+
+  // ── Settings ──────────────────────────────────
+  _setupSettings() {
+    document.getElementById('btnSaveSettings').addEventListener('click', () => this._saveSettings());
+    document.getElementById('btnExport').addEventListener('click', () => this._exportData());
+    document.getElementById('btnImport').addEventListener('click', () =>
+      document.getElementById('importFile').click());
+    document.getElementById('importFile').addEventListener('change', e => this._importData(e.target.files[0]));
+    document.getElementById('btnClearAll').addEventListener('click', () => this._clearAll());
   }
-  
-  // Data Management
-  async exportData() {
+
+  // ── Data management ───────────────────────────
+  async _exportData() {
     const data = {
       projects: await this.db.getAll('projects'),
       messages: await this.db.getAll('messages'),
-      settings: await this.db.getAll('settings'),
       files: await this.db.getAll('files'),
       exportedAt: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `devai-backup-${Date.now()}.json`;
-    a.click();
+    Object.assign(document.createElement('a'), { href: url, download: `devai-${Date.now()}.json` }).click();
     URL.revokeObjectURL(url);
-    this.showToast('Data exported', 'success');
+    this._toast('Data exported', 'success');
   }
-  
-  async importData(file) {
+
+  async _importData(file) {
     if (!file) return;
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      
-      if (data.projects) {
-        for (const p of data.projects) await this.db.put('projects', p);
-      }
-      if (data.messages) {
-        for (const m of data.messages) await this.db.put('messages', m);
-      }
-      if (data.settings) {
-        for (const s of data.settings) await this.db.put('settings', s);
-      }
-      if (data.files) {
-        for (const f of data.files) await this.db.put('files', f);
-      }
-      
-      await this.loadSettings();
-      await this.loadProjects();
-      this.renderProjects();
-      this.applySettings();
-      this.showToast('Data imported successfully', 'success');
-    } catch (error) {
-      this.showToast('Import failed: ' + error.message, 'error');
+      const data = JSON.parse(await file.text());
+      if (data.projects) for (const p of data.projects) await this.db.put('projects', p);
+      if (data.messages) for (const m of data.messages) await this.db.put('messages', m);
+      if (data.files)    for (const f of data.files)    await this.db.put('files', f);
+      await this._loadProjects();
+      this._renderProjects();
+      this._toast('Data imported', 'success');
+    } catch (e) {
+      this._toast('Import failed: ' + e.message, 'error');
     }
     document.getElementById('importFile').value = '';
   }
-  
-  async clearAllData() {
-    if (!confirm('WARNING: This will delete ALL data. Are you sure?')) return;
-    await this.db.clear('projects');
-    await this.db.clear('messages');
-    await this.db.clear('settings');
-    await this.db.clear('files');
-    this.projects = [];
-    this.messages = [];
-    this.currentProject = null;
-    this.renderProjects();
-    this.showToast('All data cleared', 'success');
+
+  async _clearAll() {
+    if (!confirm('Delete ALL data permanently?')) return;
+    for (const s of ['projects','messages','files','settings']) await this.db.clear(s);
+    this.projects = []; this.messages = []; this.currentProjectId = null; this.cfg = {};
+    this._renderProjects();
+    this._toast('All data cleared');
   }
-  
-  // UI Helpers
-  showModal(id) {
-    document.getElementById(id).classList.add('active');
-  }
-  
-  hideModal(id) {
-    document.getElementById(id).classList.remove('active');
-  }
-  
-  showToast(message, type = 'info') {
-    const container = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-      <span>${type === 'success' ? '✓' : type === 'error' ? '✗' : type === 'warning' ? '⚠' : 'ℹ'}</span>
-      <span>${this.escapeHtml(message)}</span>
-    `;
-    container.appendChild(toast);
+
+  // ── Toast ─────────────────────────────────────
+  _toast(msg, type = 'info') {
+    const wrap = document.getElementById('toasts');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : type === 'warning' ? '⚠' : 'ℹ';
+    t.innerHTML = `<span>${icon}</span><span>${esc(msg)}</span>`;
+    wrap.appendChild(t);
     setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateY(-20px)';
-      setTimeout(() => toast.remove(), 300);
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(-8px)';
+      setTimeout(() => t.remove(), 280);
     }, 3000);
   }
-  
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-  
-  formatMarkdown(text) {
-    if (!text) return '';
-    let html = this.escapeHtml(text);
-    
-    // Code blocks
-    html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-      return `<pre><code>${code}</code></pre>`;
-    });
-    
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    
-    // Bold
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // Italic
-    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    
-    // Headers
-    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-    html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-    html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-    
-    // Lists
-    html = html.replace(/^\s*[-*+]\s+(.*)/gim, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-    html = html.replace(/<\/ul>\s*<ul>/g, '');
-    
-    // Links
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color: var(--accent);">$1</a>');
-    
-    // Line breaks
-    html = html.replace(/\n/g, '<br>');
-    
-    return html;
-  }
-  
-  formatTime(timestamp) {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-  
-  timeAgo(date) {
-    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+
+  // ── Helpers ───────────────────────────────────
+  _ago(ts) {
+    const s = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
   }
 }
 
-// Initialize
+// ════════════════════════════════════════════════
+// Boot
+// ════════════════════════════════════════════════
 const app = new App();
 app.init();
 </script>
