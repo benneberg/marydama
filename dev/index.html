@@ -341,7 +341,8 @@
     import { markdown } from 'https://esm.sh/@codemirror/lang-markdown';
     import { oneDark } from 'https://esm.sh/@codemirror/theme-one-dark';
     import * as git from 'https://esm.sh/isomorphic-git@1.24.5';
-    import { HttpClient } from 'https://esm.sh/isomorphic-git@1.24.5/http/web';
+    import { HttpClient } from 'https://esm.sh/isomorphic-git@1.24.5/http/web/index.js';
+    const http = new HttpClient();
 
     // --- 1. DATABASE SETUP ---
     const db = new Dexie('ForgeDB');
@@ -554,6 +555,122 @@
                 }
             }
 
+            // --- 5.5. DEXIE FILESYSTEM ADAPTER FOR ISOMORPHIC-GIT ---
+const DexieFsAdapter = {
+    promises: {
+        readFile: async (filepath) => {
+            const file = await db.files.where({ projectId: activeProjectId.value, path: filepath }).first();
+            if (!file) throw new Error(`ENOENT: no such file, open '${filepath}'`);
+            return file.content;
+        },
+        writeFile: async (filepath, content) => {
+            const file = await db.files.where({ projectId: activeProjectId.value, path: filepath }).first();
+            if (file) {
+                await db.files.update(file.id, { content, updatedAt: Date.now() });
+            } else {
+                await db.files.add({ projectId: activeProjectId.value, path: filepath, content, updatedAt: Date.now() });
+            }
+            // Refresh UI if it's the active file
+            if (activeFile.value?.path === filepath) {
+                activeFile.value.content = content;
+                if (editorView.value) {
+                    editorView.value.dispatch({ changes: { from: 0, to: editorView.value.state.doc.length, insert: content } });
+                }
+            }
+            await loadProject();
+        },
+        readdir: async (dirpath) => {
+            const normalizedDir = dirpath === '.' ? '' : (dirpath.endsWith('/') ? dirpath : dirpath + '/');
+            const allFiles = await db.files.where('projectId').equals(activeProjectId.value).toArray();
+            const items = new Set();
+            
+            allFiles.forEach(f => {
+                if (f.path === normalizedDir.slice(0, -1) || f.path.startsWith(normalizedDir)) {
+                    const relative = f.path.substring(normalizedDir.length);
+                    const firstSegment = relative.split('/')[0];
+                    if (firstSegment) items.add(firstSegment);
+                }
+            });
+            return Array.from(items);
+        },
+        mkdir: async (dirpath) => {
+            // In our flat DB, directories are implicit. We create a placeholder .gitkeep to represent it.
+            const placeholderPath = dirpath.endsWith('/') ? `${dirpath}.gitkeep` : `${dirpath}/.gitkeep`;
+            const exists = await db.files.where({ projectId: activeProjectId.value, path: placeholderPath }).first();
+            if (!exists) {
+                await db.files.add({ projectId: activeProjectId.value, path: placeholderPath, content: '', updatedAt: Date.now() });
+            }
+            await loadProject();
+        },
+        stat: async (filepath) => {
+            const file = await db.files.where({ projectId: activeProjectId.value, path: filepath }).first();
+            if (file) return { type: 'file', size: file.content.length, mtimeMs: file.updatedAt };
+            // Check if it's a directory
+            const normalizedDir = filepath.endsWith('/') ? filepath : filepath + '/';
+            const hasChildren = await db.files.where('projectId').equals(activeProjectId.value).filter(f => f.path.startsWith(normalizedDir)).first();
+            if (hasChildren) return { type: 'dir', size: 0, mtimeMs: Date.now() };
+            throw new Error(`ENOENT: no such file or directory, stat '${filepath}'`);
+        },
+        unlink: async (filepath) => {
+            const file = await db.files.where({ projectId: activeProjectId.value, path: filepath }).first();
+            if (file) await db.files.delete(file.id);
+            await loadProject();
+        },
+        rmdir: async (dirpath) => {
+            const normalizedDir = dirpath.endsWith('/') ? dirpath : dirpath + '/';
+            const filesInDir = await db.files.where('projectId').equals(activeProjectId.value).filter(f => f.path.startsWith(normalizedDir)).toArray();
+            for (const f of filesInDir) await db.files.delete(f.id);
+            await loadProject();
+        }
+    }
+};
+    // --- 5.6. ADVANCED AI CODE INTELLIGENCE TOOLS ---
+async function executeAdvancedAITool(toolName, filepath) {
+    const file = files.value.find(f => f.path === filepath);
+    if (!file) return `Error: File '${filepath}' not found in project.`;
+
+    const apiKey = settings.value.provider === 'groq' ? settings.value.groqKey : settings.value.openrouterKey;
+    if (!apiKey) return 'Error: API Key missing in settings.';
+
+    let systemPrompt = '';
+    if (toolName === 'review_code') {
+        systemPrompt = 'You are a Senior Code Reviewer. Analyze the provided code for bugs, security vulnerabilities, performance issues, and code smells. Return a structured Markdown response with severity levels (CRITICAL, WARNING, SUGGESTION) and explain WHY.';
+    } else if (toolName === 'explain_code') {
+        systemPrompt = 'You are an Expert Educator. Explain the provided code clearly, breaking down its logic, patterns, and purpose line-by-line or block-by-block. Use simple analogies where helpful.';
+    } else if (toolName === 'suggest_refactor') {
+        systemPrompt = 'You are a Principal Engineer. Review the code and provide a refactored version that improves readability, performance, and adherence to best practices. Show the diff or full new code, and explain the improvements.';
+    }
+
+    try {
+        const endpoint = settings.value.provider === 'groq' 
+            ? 'https://api.groq.com/openai/v1/chat/completions'
+            : 'https://openrouter.ai/api/v1/chat/completions';
+            
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+                ...(settings.value.provider === 'openrouter' ? { 'HTTP-Referer': window.location.href, 'X-Title': 'Forge IDE' } : {})
+            },
+            body: JSON.stringify({
+                model: settings.value.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: `File: ${file.path}\n\nCode:\n\`\`\`\n${file.content}\n\`\`\`` }
+                ],
+                temperature: 0.3 // Lower temperature for deterministic analysis
+            })
+        });
+
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        return `Failed to execute ${toolName}: ${error.message}`;
+    }
+}
+
             // --- 6. AI & REACT LOOP ---
             async function sendMessage() {
                 if (!chatInput.value.trim() || !activeProjectId.value) return;
@@ -681,109 +798,199 @@
                 }
             }
 
-            // --- 7. TOOL EXECUTION ENGINE ---
-            async function executeTool(name, args) {
-                addTerminalLine(`$ ${name}(${JSON.stringify(args)})`, 'command');
-                isExecuting.value = true;
-                
-                try {
-                    switch (name) {
-                        case 'read_file': {
-                            const file = files.value.find(f => f.path === args.path);
-                            const content = file ? file.content : 'File not found.';
-                            addTerminalLine(`Read ${args.path} (${content.length} bytes)`, 'success');
-                            return content;
-                        }
-                        case 'write_file': {
-                            let file = files.value.find(f => f.path === args.path);
-                            if (file) {
-                                await db.files.update(file.id, { content: args.content, updatedAt: Date.now() });
-                            } else {
-                                const id = await db.files.add({ projectId: activeProjectId.value, path: args.path, content: args.content, updatedAt: Date.now() });
-                                file = await db.files.get(id);
-                            }
-                            await loadProject(); // refresh file list
-                            if (activeFile.value?.path === args.path) {
-                                activeFile.value.content = args.content;
-                                if (editorView.value) editorView.value.dispatch({ changes: { from: 0, to: editorView.value.state.doc.length, insert: args.content } });
-                            }
-                            addTerminalLine(`Wrote ${args.path}`, 'success');
-                            return `Successfully wrote to ${args.path}`;
-                        }
-                        case 'list_files': {
-                            const list = files.value.map(f => f.path).join('\n');
-                            return list || 'No files found.';
-                        }
-                        case 'run_command': {
-                            return await simulateTerminal(args.command || args.cmd);
-                        }
-                        case 'git_status': {
-                            return await runGitCommand('status');
-                        }
-                        default:
-                            return `Tool '${name}' not implemented or invalid arguments.`;
-                    }
-                } finally {
-                    isExecuting.value = false;
-                }
-            }
+        // --- 5.6. ADVANCED AI CODE INTELLIGENCE TOOLS ---
+async function executeAdvancedAITool(toolName, filepath) {
+    const file = files.value.find(f => f.path === filepath);
+    if (!file) return `Error: File '${filepath}' not found in project.`;
 
-            // --- 8. TERMINAL & GIT SIMULATION ---
-            function addTerminalLine(text, type = 'normal') {
-                terminalOutput.value.push({ text, type });
-            }
+    const apiKey = settings.value.provider === 'groq' ? settings.value.groqKey : settings.value.openrouterKey;
+    if (!apiKey) return 'Error: API Key missing in settings.';
 
-            async function executeTerminalCommand() {
-                if (!terminalInput.value.trim()) return;
-                const cmd = terminalInput.value.trim();
-                addTerminalLine(cmd, 'command');
-                terminalInput.value = '';
-                isExecuting.value = true;
-                
-                const result = await simulateTerminal(cmd);
-                if (result) addTerminalLine(result, result.includes('error') || result.includes('fatal') ? 'error' : 'normal');
-                
-                isExecuting.value = false;
-            }
+    let systemPrompt = '';
+    if (toolName === 'review_code') {
+        systemPrompt = 'You are a Senior Code Reviewer. Analyze the provided code for bugs, security vulnerabilities, performance issues, and code smells. Return a structured Markdown response with severity levels (CRITICAL, WARNING, SUGGESTION) and explain WHY.';
+    } else if (toolName === 'explain_code') {
+        systemPrompt = 'You are an Expert Educator. Explain the provided code clearly, breaking down its logic, patterns, and purpose line-by-line or block-by-block. Use simple analogies where helpful.';
+    } else if (toolName === 'suggest_refactor') {
+        systemPrompt = 'You are a Principal Engineer. Review the code and provide a refactored version that improves readability, performance, and adherence to best practices. Show the diff or full new code, and explain the improvements.';
+    }
 
-            async function simulateTerminal(cmd) {
-                const parts = cmd.split(' ');
-                const base = parts[0];
-                
-                if (base === 'clear') { terminalOutput.value = []; return ''; }
-                if (base === 'ls' || base === 'dir') {
-                    const dirs = new Set(files.value.map(f => f.path.split('/')[0]));
-                    return Array.from(dirs).join('  ') || '(empty)';
-                }
-                if (base === 'cat' && parts[1]) {
-                    const file = files.value.find(f => f.path === parts[1]);
-                    return file ? file.content : `cat: ${parts[1]}: No such file or directory`;
-                }
-                if (base === 'npm') {
-                    if (parts[1] === 'install') {
-                        await new Promise(r => setTimeout(r, 1500));
-                        return 'added 142 packages in 1.5s\n\n✨ Done.';
-                    }
-                    if (parts[1] === 'run' && parts[2] === 'dev') {
-                        return '> vite\n  VITE v5.0.0  ready in 240 ms\n  ➜  Local:   http://localhost:5173/\n  ➜  Network: use --host to expose';
-                    }
-                }
-                if (base === 'git') {
-                    return await runGitCommand(cmd);
-                }
-                if (base === 'help') {
-                    return 'Available: ls, cat <file>, npm install, npm run dev, git <cmd>, clear, help';
-                }
-                return `Command not found: ${base}. Type 'help' for available commands.`;
-            }
+    try {
+        const endpoint = settings.value.provider === 'groq' 
+            ? 'https://api.groq.com/openai/v1/chat/completions'
+            : 'https://openrouter.ai/api/v1/chat/completions';
+            
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+                ...(settings.value.provider === 'openrouter' ? { 'HTTP-Referer': window.location.href, 'X-Title': 'Forge IDE' } : {})
+            },
+            body: JSON.stringify({
+                model: settings.value.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: `File: ${file.path}\n\nCode:\n\`\`\`\n${file.content}\n\`\`\`` }
+                ],
+                temperature: 0.3 // Lower temperature for deterministic analysis
+            })
+        });
 
-            async function runGitCommand(cmdStr) {
-                if (!settings.value.githubPat) return 'Warning: GitHub PAT not set in settings. Git operations may fail.';
-                // Simplified mock for single-file constraints. Real isomorphic-git requires fs abstraction.
-                if (cmdStr.includes('status')) return 'On branch main\nYour branch is up to date with \'origin/main\'.\n\nnothing to commit, working tree clean';
-                if (cmdStr.includes('init')) { showToast('Git initialized', 'success'); return 'Initialized empty Git repository'; }
-                return `Simulated git output for: ${cmdStr}`;
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        return `Failed to execute ${toolName}: ${error.message}`;
+    }
+}
+           // --- 8. REAL TERMINAL & ISOMORPHIC-GIT INTEGRATION ---
+function addTerminalLine(text, type = 'normal') {
+    terminalOutput.value.push({ text, type });
+}
+
+async function executeTerminalCommand() {
+    if (!terminalInput.value.trim()) return;
+    const cmd = terminalInput.value.trim();
+    addTerminalLine(cmd, 'command');
+    terminalInput.value = '';
+    isExecuting.value = true;
+    
+    const result = await simulateTerminal(cmd);
+    if (result) addTerminalLine(result, result.includes('Error') || result.includes('fatal') ? 'error' : 'normal');
+    
+    isExecuting.value = false;
+}
+
+async function simulateTerminal(cmd) {
+    const parts = cmd.split(' ');
+    const base = parts[0];
+    
+    if (base === 'clear') { terminalOutput.value = []; return ''; }
+    if (base === 'ls' || base === 'dir') {
+        const dirs = new Set(files.value.map(f => f.path.split('/')[0]));
+        return Array.from(dirs).join('  ') || '(empty directory)';
+    }
+    if (base === 'cat' && parts[1]) {
+        const file = files.value.find(f => f.path === parts[1]);
+        return file ? file.content : `cat: ${parts[1]}: No such file or directory`;
+    }
+    if (base === 'pwd') return `/workspace/${activeProject.value?.name || 'project'}`;
+    if (base === 'npm') {
+        if (parts[1] === 'install') {
+            await new Promise(r => setTimeout(r, 1500));
+            return 'added 142 packages in 1.5s\n\n✨ Done.';
+        }
+        if (parts[1] === 'run' && parts[2] === 'dev') {
+            return '> vite\n  VITE v5.0.0  ready in 240 ms\n  ➜  Local:   http://localhost:5173/\n  ➜  Network: use --host to expose';
+        }
+    }
+    if (base === 'git') {
+        // Route git commands to the real isomorphic-git engine
+        const subCmd = parts[1];
+        const arg = parts.slice(2).join(' ');
+        return await runRealGitCommand(subCmd, arg);
+    }
+    if (base === 'help') {
+        return 'Available: ls, cat <file>, pwd, npm install, npm run dev, git <cmd>, clear, help';
+    }
+    return `Command not found: ${base}. Type 'help' for available commands.`;
+}
+
+async function runRealGitCommand(subCmd, arg = '') {
+    const dir = `/workspace/${activeProject.value?.name || 'project'}`;
+    const fs = DexieFsAdapter;
+
+    try {
+        if (subCmd === 'init') {
+            await git.init({ fs, dir });
+            showToast('Git repository initialized', 'success');
+            return 'Initialized empty Git repository in ' + dir;
+        }
+        
+        if (subCmd === 'clone') {
+            if (!arg) return 'Usage: git clone <repository_url>';
+            showToast('Cloning repository...', 'info');
+            await git.clone({
+                fs, http, dir,
+                url: arg,
+                singleBranch: true,
+                depth: 1,
+                onProgress: (progress) => {
+                    // Optional: update a progress UI element here
+                }
+            });
+            await loadProject(); // Refresh files from Git
+            showToast('Repository cloned successfully', 'success');
+            return `Cloned ${arg} into ${dir}`;
+        }
+
+        if (subCmd === 'status') {
+            const status = await git.statusMatrix({ fs, dir });
+            // statusMatrix returns [filepath, headStatus, workdirStatus, stagedStatus]
+            // 1 = unmodified, 2 = modified, 0 = deleted, 3 = added
+            const changes = [];
+            for (const [filepath, head, workdir, staged] of status) {
+                if (filepath === '.git') continue;
+                if (workdir === 2 && staged === 1) changes.push(` M ${filepath}`);
+                if (workdir === 3 && staged === 0) changes.push(` M ${filepath} (staged)`);
+                if (head === 0 && workdir === 2) changes.push(`?? ${filepath}`);
+                if (head === 1 && workdir === 0) changes.push(` D ${filepath}`);
             }
+            return changes.length > 0 
+                ? `On branch main\nChanges not staged for commit:\n${changes.join('\n')}`
+                : 'On branch main\nnothing to commit, working tree clean';
+        }
+
+        if (subCmd === 'add') {
+            const filepath = arg || '.';
+            await git.add({ fs, dir, filepath });
+            return `Added '${filepath}' to staging area.`;
+        }
+
+        if (subCmd === 'commit') {
+            const message = arg || 'chore: automated commit';
+            const commitHash = await git.commit({
+                fs, dir,
+                message: message,
+                author: { name: 'Forge Agent', email: 'agent@forge.ide' }
+            });
+            showToast('Changes committed', 'success');
+            return `Committed: ${message}\nHash: ${commitHash.slice(0, 7)}`;
+        }
+
+        if (subCmd === 'push') {
+            const pat = settings.value.githubPat;
+            if (!pat) return 'Error: GitHub Personal Access Token required in Settings for push.';
+            
+            // Extract remote URL and inject PAT for authentication
+            const remotes = await git.listRemotes({ fs, dir });
+            const remoteUrl = remotes.find(r => r.remote === 'origin')?.url;
+            if (!remoteUrl) return 'Error: No remote "origin" configured. Clone or add a remote first.';
+
+            const authUrl = remoteUrl.replace('https://', `https://${pat}@`);
+            
+            await git.push({
+                fs, http, dir,
+                remote: 'origin',
+                ref: 'main',
+                onAuth: () => ({ username: 'git', password: pat })
+            });
+            showToast('Pushed to GitHub', 'success');
+            return 'Successfully pushed to origin/main';
+        }
+
+        if (subCmd === 'log') {
+            const logs = await git.log({ fs, dir, depth: 5 });
+            return logs.map(l => `commit ${l.oid.slice(0, 7)}\nAuthor: ${l.author.name}\nDate: ${new Date(l.committer.timestamp).toLocaleString()}\n    ${l.commit.message}\n`).join('\n');
+        }
+
+        return `Git command 'git ${subCmd}' executed (mocked/simulated for this context).`;
+    } catch (error) {
+        console.error('Git Error:', error);
+        return `Git Error: ${error.message}`;
+    }
+}
 
             // --- 9. UTILS ---
             function renderMarkdown(text) {
