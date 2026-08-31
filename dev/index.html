@@ -7,7 +7,6 @@
 <title>MiniCodi</title>
 <link rel="stylesheet" href="styles.css">
 <style>
-  /* ── File browser + editor additions ── */
   .changes-bar {
     display: flex; align-items: center; gap: 8px;
     padding: 8px 12px; border-radius: var(--r-md);
@@ -15,7 +14,6 @@
     margin-bottom: 12px; font-size: 13px; color: var(--warning);
   }
   .changes-bar span { flex: 1; font-weight: 500; }
-
   .editor-wrap {
     margin-top: 14px; border: 1px solid var(--border);
     border-radius: var(--r-lg); overflow: hidden;
@@ -29,12 +27,9 @@
     width: 100%; min-height: 280px; padding: 12px;
     background: var(--bg); color: var(--text);
     font-family: var(--mono); font-size: 12px; line-height: 1.6;
-    border: none; outline: none; resize: vertical;
-    tab-size: 2;
+    border: none; outline: none; resize: vertical; tab-size: 2;
   }
-
   .file-item.active { background: var(--accent-dim); color: var(--accent); }
-
   .diff-view {
     background: var(--bg); border: 1px solid var(--border);
     border-radius: var(--r-sm); padding: 10px 12px;
@@ -42,18 +37,35 @@
     overflow-x: auto; white-space: pre; max-height: 260px;
     overflow-y: auto; color: var(--text-secondary);
   }
-
-  /* Panel for files — same base as other panels but rendered dynamically */
   #panel-files { padding: 16px; }
 
-  /* Production role tab */
-  .role-tab[data-role="production"] { /* no special style needed, handled by active class */ }
+  /* ── Apply-to-file button (injected after AI code blocks) ── */
+  .apply-btn-wrap { margin: -6px 0 10px; }
+  .apply-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: var(--r-sm);
+    background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.35);
+    color: var(--positive); font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: 0.15s; font-family: inherit;
+  }
+  .apply-btn:hover { background: rgba(34,197,94,0.22); }
+  .apply-btn code { font-family: var(--mono); font-size: 11px; opacity: 0.85; }
+  .apply-btn.applied {
+    background: rgba(34,197,94,0.06); color: var(--text-tertiary);
+    border-color: var(--border); cursor: default; pointer-events: none;
+  }
+
+  /* ── Context indicator shown in chat top bar ── */
+  .ctx-indicator {
+    font-size: 11px; color: var(--text-tertiary);
+    padding: 3px 0 6px; line-height: 1.4;
+  }
+  .ctx-indicator strong { color: var(--text-secondary); }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- Header -->
   <header class="app-header">
     <h1>MiniCodi</h1>
     <div class="header-right">
@@ -68,7 +80,6 @@
     </div>
   </header>
 
-  <!-- Panels -->
   <div class="panels">
 
     <!-- Projects -->
@@ -88,11 +99,10 @@
       <div class="chat-top">
         <div class="chat-model-row">
           <div class="model-select-wrap">
-            <select id="modelSelect">
-              <option value="">Select model…</option>
-            </select>
+            <select id="modelSelect"><option value="">Select model…</option></select>
           </div>
         </div>
+        <div id="ctxIndicator" class="ctx-indicator"></div>
         <div class="chat-role-tabs" id="roleTabs">
           <button class="role-tab active" data-role="">General</button>
           <button class="role-tab" data-role="frontend">Frontend</button>
@@ -105,7 +115,7 @@
       <div class="chat-bottom">
         <div class="chat-tools">
           <button class="tool-btn" data-tool="read">📄 Read</button>
-          <button class="tool-btn" data-tool="write">✏ Write</button>
+          <button class="tool-btn" data-tool="write">✏️ Write</button>
           <button class="tool-btn" data-tool="run">⚡ Run</button>
           <button class="tool-btn" data-tool="review">🔍 Review</button>
         </div>
@@ -118,7 +128,7 @@
       </div>
     </div>
 
-    <!-- Files (workspace browser + editor) — content rendered by app.js -->
+    <!-- Files — content rendered dynamically by app.js -->
     <div class="panel" id="panel-files">
       <div class="empty-state">
         <div class="empty-icon">🗂</div>
@@ -131,7 +141,7 @@
       <div class="section-title">Git Integration</div>
 
       <div id="gitNotConnected">
-        <div class="empty-state" style="padding: 24px 0;">
+        <div class="empty-state" style="padding:24px 0;">
           <div class="empty-icon">🔌</div>
           <div class="empty-title">Connect GitHub</div>
           <div class="empty-desc mb-2">Link your account to pull repos and push changes.</div>
@@ -142,7 +152,6 @@
           <div class="form-hint">Create at github.com/settings/tokens — scope: <strong>repo</strong></div>
         </div>
         <button class="btn btn-primary btn-block mt-3" id="btnConnectGit">Connect to GitHub</button>
-
         <div class="divider mt-4"></div>
         <div class="text-secondary text-sm mb-2">Or load a local ZIP project:</div>
         <label class="btn btn-secondary btn-block" style="cursor:pointer;">
@@ -182,7 +191,6 @@
     <!-- Settings -->
     <div class="panel" id="panel-settings">
       <div class="section-title">Settings</div>
-
       <div class="form-group">
         <label class="form-label">Groq API Key</label>
         <input type="password" class="form-input" id="groqKey" placeholder="gsk_xxxxxxxxxxxx">
@@ -196,9 +204,7 @@
         <input type="password" class="form-input" id="githubTokenSettings" placeholder="ghp_xxxxxxxxxxxx">
         <div class="form-hint">Scope: <code>repo</code> — fine-grained tokens recommended</div>
       </div>
-
       <div class="divider"></div>
-
       <div class="toggle-row">
         <span class="toggle-label">Stream responses</span>
         <button class="toggle-switch on" id="togStream" onclick="app.toggle('stream')"></button>
@@ -211,9 +217,7 @@
         <span class="toggle-label">Confirm commands</span>
         <button class="toggle-switch" id="togConfirm" onclick="app.toggle('confirmCommands')"></button>
       </div>
-
       <div class="divider"></div>
-
       <div class="form-group">
         <label class="form-label">Max tokens per request</label>
         <input type="number" class="form-input" id="maxTokens" value="2048" min="256" max="8192" step="256">
@@ -223,9 +227,7 @@
         <label class="form-label">System prompt (optional)</label>
         <textarea class="form-textarea" id="systemPrompt" placeholder="You are a senior developer…"></textarea>
       </div>
-
       <button class="btn btn-primary btn-block mt-3" id="btnSaveSettings">Save Settings</button>
-
       <div class="divider"></div>
       <div class="flex gap-2 mt-2">
         <button class="btn btn-secondary" style="flex:1" id="btnExport">Export data</button>
@@ -252,13 +254,11 @@
       <span class="nav-label">Chat</span>
     </button>
     <button class="nav-item" data-panel="files">
-      <!-- Code/file icon -->
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
         <line x1="16" y1="13" x2="8" y2="13"/>
         <line x1="16" y1="17" x2="8" y2="17"/>
-        <polyline points="10 9 9 9 8 9"/>
       </svg>
       <span class="nav-label">Files</span>
     </button>
@@ -278,10 +278,9 @@
   </nav>
 </div>
 
-<!-- Toast container -->
 <div class="toast-wrap" id="toasts"></div>
 
-<!-- Sheet: New/Edit Project -->
+<!-- Sheet: New Project -->
 <div class="overlay" id="sheetProject">
   <div class="sheet">
     <div class="sheet-header">
@@ -323,16 +322,15 @@
         <label class="form-label">Commit message</label>
         <input type="text" class="form-input" id="commitMsg" placeholder="feat: improve error handling">
       </div>
-      <div class="form-hint mb-2" style="margin-bottom:12px;">
-        This will commit all local changes and push to GitHub atomically.
-        Blocked if remote has new commits since your last pull.
-      </div>
+      <p class="form-hint" style="margin-bottom:12px;">
+        Commits all local changes atomically. Blocked if remote has new commits since your last pull.
+      </p>
       <button class="btn btn-primary btn-block" id="btnDoCommit">Commit &amp; Push</button>
     </div>
   </div>
 </div>
 
-<!-- Sheet: Review Changes (diff view) -->
+<!-- Sheet: Review Changes (diff) -->
 <div class="overlay" id="sheetChanges">
   <div class="sheet">
     <div class="sheet-header">
@@ -341,8 +339,10 @@
     </div>
     <div id="changesBody"></div>
     <div style="margin-top:16px;display:flex;gap:8px;">
-      <button class="btn btn-primary" style="flex:1" onclick="closeSheet('sheetChanges');openSheet('sheetCommit')">Push…</button>
-      <button class="btn btn-secondary" style="flex:1" onclick="closeSheet('sheetChanges')">Close</button>
+      <button class="btn btn-primary" style="flex:1"
+              onclick="closeSheet('sheetChanges');openSheet('sheetCommit')">Push…</button>
+      <button class="btn btn-secondary" style="flex:1"
+              onclick="closeSheet('sheetChanges')">Close</button>
     </div>
   </div>
 </div>
