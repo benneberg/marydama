@@ -4,9 +4,27 @@
 // ════════════════════════════════════════════════
 // Constants
 // ════════════════════════════════════════════════
-const MAX_FILE_CHARS = 3000;  // ~750 tokens per file
-const MAX_HISTORY    = 10;    // messages sent to AI
-const MAX_CTX_FILES  = 3;     // max files injected as context
+const MAX_FILE_CHARS   = 3000;  // ~750 tokens per file when clipped
+const MAX_HISTORY      = 10;    // messages sent to AI
+const MAX_CTX_FILES    = 3;     // max full-content files in context
+const CTX_TOKEN_BUDGET = 6000;  // total chars across all injected files (~1500 tokens)
+
+// Files always included regardless of relevance scoring
+const ENTRY_POINTS = [
+  'package.json','tsconfig.json','vite.config.js','vite.config.ts',
+  'webpack.config.js','rollup.config.js','.eslintrc.json','.eslintrc.js',
+  'tailwind.config.js','tailwind.config.ts',
+  'src/main.js','src/main.ts','src/index.js','src/index.ts',
+  'src/App.jsx','src/App.tsx','src/App.vue','src/App.svelte',
+  'index.js','index.ts','server.js','app.js','app.ts',
+  'README.md','ARCHITECTURE.md',
+  '.env.example','docker-compose.yml','Dockerfile',
+];
+
+// Extensions the AI can meaningfully read
+const TEXT_EXTS = /\.(js|ts|jsx|tsx|vue|svelte|html|css|scss|sass|less|json|md|yml|yaml|env|py|rb|go|rs|java|php|sh|bash|zsh|toml|xml|graphql|gql|prisma|sql|tf|hcl)$/i;
+// Binaries and generated files to always skip
+const SKIP_EXTS = /\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|pdf|zip|gz|tar|mp4|mp3|webp|lock|map|min\.js|min\.css)$/i;
 
 // ════════════════════════════════════════════════
 // IndexedDB  (bumped to version 2 — migrates existing data)
@@ -391,44 +409,135 @@ class GitWorkspace {
 }
 
 // ════════════════════════════════════════════════
-// ContextBuilder — builds token-efficient AI context
+// ContextBuilder — whole-project awareness
 // ════════════════════════════════════════════════
 class ContextBuilder {
   constructor(workspace) { this.workspace = workspace; }
 
-  // Truncate a file, preserving head + tail
   _clip(content, max = MAX_FILE_CHARS) {
     if (!content || content.length <= max) return content;
     const half = Math.floor(max / 2);
-    return content.slice(0, half) + '\n…[truncated]…\n' + content.slice(-half);
+    return content.slice(0, half) + '\n// …[truncated]…\n' + content.slice(-half);
   }
 
-  // Build context lines to prepend to system prompt
-  async build(projectId, openFilePath, repoInfo) {
+  // Score a file's relevance to the user's message (0–100)
+  _score(file, userText, openFilePath, changedPaths) {
+    let score = 0;
+    const p   = file.path.toLowerCase();
+    const q   = (userText || '').toLowerCase();
+
+    // Currently open file = highest priority
+    if (file.path === openFilePath) return 100;
+
+    // Changed files are always relevant
+    if (changedPaths.has(file.path)) score += 60;
+
+    // Entry points and config files — always useful for understanding project
+    if (ENTRY_POINTS.some(e => file.path.endsWith(e) || file.path === e)) score += 40;
+
+    // Filename or directory mentioned in user's message
+    const name = p.split('/').pop().replace(/\.\w+$/, '');
+    if (q.includes(name) && name.length > 2) score += 50;
+
+    // Path segments mentioned in query (e.g. "components", "auth", "api")
+    const segments = p.split('/').slice(0, -1);
+    for (const seg of segments) {
+      if (seg.length > 2 && q.includes(seg)) score += 20;
+    }
+
+    // Feature keywords — if user mentions a feature, match related file names
+    const FEATURE_PATTERNS = [
+      ['auth','login','session','token','jwt','password','user'],
+      ['api','endpoint','route','controller','handler','request'],
+      ['component','ui','layout','page','view','screen'],
+      ['test','spec','jest','vitest','cypress','playwright'],
+      ['style','css','theme','design','tailwind','sass'],
+      ['store','state','redux','zustand','context','hook'],
+      ['db','database','model','schema','migration','prisma','sql'],
+      ['build','deploy','ci','docker','config','env','pipeline'],
+      ['util','helper','lib','shared','common','service'],
+    ];
+    for (const group of FEATURE_PATTERNS) {
+      const matchesQuery = group.some(kw => q.includes(kw));
+      const matchesFile  = group.some(kw => p.includes(kw));
+      if (matchesQuery && matchesFile) score += 35;
+    }
+
+    // Prefer smaller files (less token cost for same information)
+    const len = (file.content || '').length;
+    if (len < 500)  score += 10;
+    if (len > 8000) score -= 15;
+
+    // Penalise test files unless user is asking about tests
+    if (p.includes('.test.') || p.includes('.spec.')) {
+      if (!q.includes('test') && !q.includes('spec')) score -= 20;
+    }
+
+    // Penalise lockfiles, generated, dist
+    if (p.includes('dist/') || p.includes('.min.') || p.includes('node_modules/')) score = -1;
+
+    return Math.max(0, score);
+  }
+
+  // Build the full context block for a message
+  async build(projectId, openFilePath, repoInfo, userText) {
+    if (!projectId) return '';
+
+    const allFiles    = await this.workspace.listFiles(projectId);
+    const changes     = await this.workspace.getChanges(projectId);
+    const changedPaths = new Set(changes.map(f => f.path));
+
     const parts = [];
 
-    // Repo info
+    // 1. Repo / project header
     if (repoInfo) {
       parts.push(`Repository: ${repoInfo.owner}/${repoInfo.repo} (branch: ${repoInfo.branch})`);
     }
 
-    // Open file
-    if (openFilePath && projectId) {
-      const f = await this.workspace.readFile(projectId, openFilePath);
-      if (f) {
-        parts.push(`\nCurrently open file: \`${f.path}\` [${f.status}]\n\`\`\`\n${this._clip(f.content)}\n\`\`\``);
+    // 2. Full file tree — always send this so AI knows what exists
+    const textFiles = allFiles.filter(f => TEXT_EXTS.test(f.path) && !SKIP_EXTS.test(f.path));
+    if (textFiles.length) {
+      const tree = textFiles.map(f => {
+        const badge = f.status === 'modified' ? ' [M]' : f.status === 'new' ? ' [A]' : f.status === 'deleted' ? ' [D]' : '';
+        return `  ${f.path}${badge}`;
+      }).join('\n');
+      parts.push(`\nProject file tree (${textFiles.length} files):\n${tree}`);
+    }
+
+    // 3. Score + select files to include as full content
+    const scored = textFiles
+      .map(f => ({ f, score: this._score(f, userText, openFilePath, changedPaths) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    // Fill budget greedily from highest-scored files
+    let budget   = CTX_TOKEN_BUDGET;
+    const chosen = [];
+    for (const { f } of scored) {
+      if (chosen.length >= MAX_CTX_FILES && !changedPaths.has(f.path) && f.path !== openFilePath) break;
+      const content = f.content || '';
+      const cost    = Math.min(content.length, MAX_FILE_CHARS);
+      if (budget - cost < 0 && chosen.length > 0) continue;
+      chosen.push(f);
+      budget -= cost;
+      if (budget <= 0) break;
+    }
+
+    if (chosen.length) {
+      parts.push('\n--- Relevant files ---');
+      for (const f of chosen) {
+        const ext    = f.path.split('.').pop() || '';
+        const status = f.status !== 'clean' ? ` [${f.status}]` : '';
+        parts.push(`\n\`${f.path}\`${status}\n\`\`\`${ext}\n${this._clip(f.content)}\n\`\`\``);
       }
     }
 
-    // Changed files (up to MAX_CTX_FILES, excluding open file)
-    if (projectId) {
-      const changes = await this.workspace.getChanges(projectId);
-      const others  = changes.filter(f => f.path !== openFilePath).slice(0, MAX_CTX_FILES);
-      if (others.length) {
-        parts.push(`\nLocally modified files (${others.length}):`);
-        for (const f of others) {
-          parts.push(`• \`${f.path}\` [${f.status}]`);
-        }
+    // 4. Changed files not already shown — list with diff summary
+    const unshownChanges = changes.filter(c => !chosen.find(ch => ch.path === c.path));
+    if (unshownChanges.length) {
+      parts.push(`\nAlso locally modified (content omitted to save tokens):`);
+      for (const f of unshownChanges) {
+        parts.push(`• \`${f.path}\` [${f.status}]`);
       }
     }
 
@@ -854,6 +963,7 @@ class App {
     this._switchPanel('chat');
     await this._loadMessages();
     this._renderMessages();
+    this._updateCtxIndicator('');
   }
 
   // ── File Browser ──────────────────────────────
@@ -933,8 +1043,9 @@ class App {
         <span style="font-size:13px;font-weight:400;color:var(--text-tertiary);margin-left:8px">${esc(this.currentProj?.name || '')}</span>
       </div>
       ${changesBar}
-      <div style="margin-bottom:10px;display:flex;gap:6px;">
+      <div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;">
         <button class="btn-sm" onclick="app._newFile()">+ New file</button>
+        <button class="btn-sm" onclick="app._exportZip()">⬇ Export ZIP</button>
       </div>
       ${breadcrumb}
       <div id="fileTreeBrowser">
@@ -1159,15 +1270,27 @@ class App {
     input.value       = '';
     input.style.height = 'auto';
 
-    // Build system prompt with file context
+    // Build whole-project context — AI sees the full file tree + relevant files
     const ctxText = await this.ctx.build(
       this.currentProjId,
       this.openFilePath,
-      this.currentRepo ? this.currentRepo : null
+      this.currentRepo || null,
+      text
     );
 
+    // Show what's in context to the user
+    this._updateCtxIndicator(text);
+
     const sysLines = [ROLES[this.activeRole] || ROLES['']];
-    if (ctxText)              sysLines.push('\n--- Project Context ---\n' + ctxText);
+    // Critical instruction: always output full files with path header so Apply button works
+    sysLines.push(
+      '\nIMPORTANT: When writing or modifying any file, always output the COMPLETE file content ' +
+      '(never partial snippets) in a fenced code block whose FIRST LINE is a comment with the ' +
+      'file path, like this:\n' +
+      '```js\n// src/components/Button.jsx\n...full content...\n```\n' +
+      'Use the exact path from the project file tree. This allows changes to be applied directly.'
+    );
+    if (ctxText)               sysLines.push('\n--- Project Context ---\n' + ctxText);
     if (this.cfg.systemPrompt) sysLines.push('\n' + this.cfg.systemPrompt);
 
     const histSlice = this.messages.slice(-MAX_HISTORY).map(m => ({
@@ -1231,20 +1354,91 @@ class App {
     if (this.cfg.autosave) aMsg.id = await this.db.put('messages', aMsg);
     this.messages.push(aMsg);
 
-    // Auto-extract file writes (// filename.js pattern)
-    await this._tryExtractFiles(full);
+    // Inject Apply buttons for any file blocks in the response
+    await this._tryExtractFiles(full, bubble);
 
     this.isGenerating = false;
     document.getElementById('sendBtn').disabled = false;
   }
 
-  async _tryExtractFiles(content) {
-    const rx = /```(?:\w+)?\n\/\/ ?([\w\-./]+\.\w+)\n([\s\S]*?)```/g;
+  // After AI responds: find all file code blocks and inject Apply buttons
+  async _tryExtractFiles(content, bubbleEl) {
+    // Pattern: ```lang\n// path/to/file.ext\n...code...```
+    const rx = /```(\w*)\n\/\/ ?([\w\-./]+\.\w+)\n([\s\S]*?)```/g;
     let m;
+    let found = false;
     while ((m = rx.exec(content)) !== null) {
-      const [, path, code] = m;
-      await this.workspace.writeFile(this.currentProjId, path, code.trimEnd());
-      this._toast(`File extracted: ${path} (review in Files tab)`, 'success');
+      const [, , path] = m;
+      found = true;
+
+      // Find the rendered <pre> blocks in the bubble and inject Apply button after each
+      // We tag them by data attribute so we can match them
+      if (bubbleEl) {
+        const pres = bubbleEl.querySelectorAll('pre');
+        for (const pre of pres) {
+          const codeText = pre.textContent || '';
+          // Match this pre to the extracted path via first-line comment
+          const firstLine = codeText.split('\n')[0].trim();
+          if (firstLine === `// ${path}` || firstLine === `// ${path.replace(/^\//, '')}`) {
+            if (!pre.nextSibling?.classList?.contains('apply-btn-wrap')) {
+              const wrap = document.createElement('div');
+              wrap.className = 'apply-btn-wrap';
+              wrap.innerHTML = `
+                <button class="apply-btn" data-path="${esc(path)}">
+                  ✓ Apply to <code>${esc(path)}</code>
+                </button>`;
+              wrap.querySelector('.apply-btn').addEventListener('click', () =>
+                this._applyFileFromChat(path, codeText.replace(/^\/\/ [\w\-./]+\n/, '').trimEnd(), wrap)
+              );
+              pre.parentNode.insertBefore(wrap, pre.nextSibling);
+            }
+          }
+        }
+      }
+    }
+    return found;
+  }
+
+  async _applyFileFromChat(path, code, wrapEl) {
+    if (!this.currentProjId) { this._toast('No project open', 'error'); return; }
+    await this.workspace.writeFile(this.currentProjId, path, code);
+    this._toast(`Applied → ${path}`, 'success');
+    // Update button to show applied state
+    if (wrapEl) {
+      wrapEl.innerHTML = `<span class="apply-btn applied">✓ Applied to <code>${esc(path)}</code></span>`;
+    }
+  }
+
+  // Export workspace as ZIP (for projects not linked to GitHub)
+  async _exportZip() {
+    if (!this.currentProjId) { this._toast('No project open', 'error'); return; }
+    this._toast('Building ZIP…');
+    try {
+      if (!window.JSZip) {
+        await new Promise((res, rej) => {
+          const s  = document.createElement('script');
+          s.src    = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      const zip   = new JSZip();
+      const files = await this.workspace.listFiles(this.currentProjId);
+      const alive = files.filter(f => f.status !== 'deleted');
+      for (const f of alive) {
+        zip.file(f.path, f.content || '');
+      }
+      const blob     = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+      const projName = this.currentProj?.name || 'project';
+      const url      = URL.createObjectURL(blob);
+      Object.assign(document.createElement('a'), {
+        href:     url,
+        download: `${projName}-${Date.now()}.zip`
+      }).click();
+      URL.revokeObjectURL(url);
+      this._toast(`Exported ${alive.length} files as ZIP`, 'success');
+    } catch (e) {
+      this._toast(`ZIP export failed: ${e.message}`, 'error');
     }
   }
 
@@ -1577,6 +1771,31 @@ class App {
     this.projects = []; this.messages = []; this.currentProjId = null; this.currentProj = null; this.cfg = {};
     this._renderProjects();
     this._toast('All data cleared');
+  }
+
+  // ── Context indicator ─────────────────────────
+  async _updateCtxIndicator(userText) {
+    const el = document.getElementById('ctxIndicator');
+    if (!el || !this.currentProjId) return;
+    const allFiles    = await this.workspace.listFiles(this.currentProjId);
+    const textFiles   = allFiles.filter(f => TEXT_EXTS.test(f.path) && !SKIP_EXTS.test(f.path));
+    const changes     = await this.workspace.getChanges(this.currentProjId);
+    const changedPaths = new Set(changes.map(f => f.path));
+
+    // Re-score to show which files will be included
+    const scored = textFiles
+      .map(f => ({ f, score: this.ctx._score(f, userText, this.openFilePath, changedPaths) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_CTX_FILES + 2);
+
+    if (!textFiles.length) {
+      el.textContent = '';
+      return;
+    }
+    const names = scored.slice(0, 4).map(({ f }) => f.path.split('/').pop()).join(', ');
+    const more  = scored.length > 4 ? ` +${scored.length - 4}` : '';
+    el.innerHTML = `<strong>AI sees:</strong> ${textFiles.length} file tree · ${scored.length} files in context (${names}${more})`;
   }
 
   // ── Toast ─────────────────────────────────────
