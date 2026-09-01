@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#2b1a0f">
+<title>Backgammon — Two Player</title>
+<style>
+/* ============================================================
+   THEMES
+   ============================================================ */
+:root{
+  --ui-font:'Georgia','Times New Roman',serif;
+  --ui-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --radius:14px;
+  --ease:cubic-bezier(.22,.68,.35,1);
+}
+/* 1 — TRADITIONAL WALNUT (default) */
+body[data-theme="walnut"]{
+  --bg1:#1b1109; --bg2:#0d0805;
+  --panel:rgba(38,24,14,.86); --panel-line:rgba(215,175,110,.22);
+  --ink:#f3e3c6; --ink-dim:#c6ab84; --accent:#d8ab5f; --accent2:#8c5f2a;
+  --frame1:#6b3f1d; --frame2:#3d2210; --frame3:#8a5526;
+  --edge-hi:#c08a4a; --edge-lo:#241205;
+  --field1:#5a3418; --field2:#3a1f0d;
+  --bar1:#5e3519; --bar2:#33190a;
+  --tray1:#4a2a12; --tray2:#2a1509;
+  --pt-light1:#e9d2a6; --pt-light2:#c2a271;
+  --pt-dark1:#9a3b26; --pt-dark2:#5e2013;
+  --pt-line:rgba(30,15,5,.55);
+  --chkL1:#fffaf0; --chkL2:#dcc9a6; --chkL3:#a48f6c; --chkLrim:#8a7550;
+  --chkD1:#4e4642; --chkD2:#241d1a; --chkD3:#0d0908; --chkDrim:#000;
+  --die-bg1:#fdf6e6; --die-bg2:#d9c9a6; --die-pip:#2a1a10;
+  --hi:#ffd782; --hi-soft:rgba(255,215,130,.30);
+  --grain:.30; --felt:.0;
+}
+/* 2 — EMERALD CLUB */
+body[data-theme="emerald"]{
+  --bg1:#08170f; --bg2:#030906;
+  --panel:rgba(12,38,26,.86); --panel-line:rgba(198,168,96,.25);
+  --ink:#eef5ea; --ink-dim:#9fb9a8; --accent:#cfa94e; --accent2:#4d7a58;
+  --frame1:#241a12; --frame2:#100b07; --frame3:#3a2a1b;
+  --edge-hi:#c9a24e; --edge-lo:#000;
+  --field1:#14553b; --field2:#0a2b1c;
+  --bar1:#20170f; --bar2:#0c0805;
+  --tray1:#1a120b; --tray2:#0a0705;
+  --pt-light1:#e8dcc0; --pt-light2:#b6a780;
+  --pt-dark1:#1f6b45; --pt-dark2:#0e3a24;
+  --pt-line:rgba(0,0,0,.5);
+  --chkL1:#fffdf6; --chkL2:#e3d9c0; --chkL3:#a99e84; --chkLrim:#8d8367;
+  --chkD1:#2f7a56; --chkD2:#12503a; --chkD3:#04150d; --chkDrim:#020a06;
+  --die-bg1:#fffaf0; --die-bg2:#ded2b4; --die-pip:#16241c;
+  --hi:#ffe08a; --hi-soft:rgba(255,224,138,.28);
+  --grain:.22; --felt:.55;
+}
+/* 3 — NORDIC SLATE */
+body[data-theme="nordic"]{
+  --bg1:#e9e6e0; --bg2:#cfcbc4;
+  --panel:rgba(255,255,255,.78); --panel-line:rgba(40,50,62,.16);
+  --ink:#22303c; --ink-dim:#5d6b78; --accent:#2f6b8f; --accent2:#8fa3b3;
+  --frame1:#d9cfbf; --frame2:#a99c88; --frame3:#efe7d8;
+  --edge-hi:#fffaf0; --edge-lo:#8a7f6c;
+  --field1:#f2ece1; --field2:#ded5c6;
+  --bar1:#cfc4b0; --bar2:#a89c86;
+  --tray1:#e3dacb; --tray2:#c2b7a3;
+  --pt-light1:#fdfbf6; --pt-light2:#ded5c4;
+  --pt-dark1:#4a6a80; --pt-dark2:#27404f;
+  --pt-line:rgba(60,60,60,.28);
+  --chkL1:#ffffff; --chkL2:#e8e2d6; --chkL3:#b9b2a4; --chkLrim:#9a9284;
+  --chkD1:#5b7d95; --chkD2:#2b4557; --chkD3:#15242e; --chkDrim:#0e1a22;
+  --die-bg1:#ffffff; --die-bg2:#e2dccf; --die-pip:#27404f;
+  --hi:#2f6b8f; --hi-soft:rgba(47,107,143,.22);
+  --grain:.14; --felt:.10;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  font-family:var(--ui-sans);
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--bg1) 0%, var(--bg2) 100%) fixed;
+  color:var(--ink);
+  overscroll-behavior:none;
+  -webkit-user-select:none;user-select:none;
+  transition:background .5s var(--ease), color .35s var(--ease);
+}
+#app{
+  min-height:100dvh;display:flex;flex-direction:column;
+  padding:calc(env(safe-area-inset-top) + 6px) 8px calc(env(safe-area-inset-bottom) + 8px);
+  gap:6px;max-width:1180px;margin:0 auto;width:100%;
+}
+
+/* ---------- header ---------- */
+header{display:flex;align-items:center;gap:8px;padding:2px 4px}
+.brand{display:flex;flex-direction:column;line-height:1;margin-right:auto;min-width:0}
+.brand b{font-family:var(--ui-font);font-size:17px;letter-spacing:.06em;font-weight:600}
+.brand span{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-dim);margin-top:3px}
+.iconbtn{
+  width:36px;height:36px;flex:0 0 auto;border-radius:11px;border:1px solid var(--panel-line);
+  background:var(--panel);color:var(--ink);font-size:15px;display:grid;place-items:center;
+  cursor:pointer;transition:transform .12s var(--ease),border-color .2s;
+}
+.iconbtn:active{transform:scale(.92)}
+.iconbtn.off{opacity:.45}
+.swatches{display:flex;gap:5px;padding:3px;border-radius:12px;background:var(--panel);border:1px solid var(--panel-line)}
+.sw{width:24px;height:24px;border-radius:8px;cursor:pointer;border:1.5px solid rgba(255,255,255,.18);position:relative;transition:transform .15s var(--ease)}
+.sw:active{transform:scale(.9)}
+.sw[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--hi-soft)}
+.sw.walnut{background:linear-gradient(135deg,#8a5526 0 50%,#e9d2a6 50% 100%)}
+.sw.emerald{background:linear-gradient(135deg,#12503a 0 50%,#cfa94e 50% 100%)}
+.sw.nordic{background:linear-gradient(135deg,#2b4557 0 50%,#efe7d8 50% 100%)}
+
+/* ---------- score strip ---------- */
+.scores{display:flex;gap:6px;align-items:stretch}
+.pcard{
+  flex:1;display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:12px;
+  background:var(--panel);border:1px solid var(--panel-line);position:relative;overflow:hidden;
+  transition:border-color .25s,box-shadow .25s,transform .25s;
+}
+.pcard.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent), 0 6px 18px -8px var(--accent)}
+.pcard .disc{width:22px;height:22px;border-radius:50%;flex:0 0 auto;box-shadow:inset 0 -2px 4px rgba(0,0,0,.45),inset 0 2px 3px rgba(255,255,255,.4)}
+.pcard.w .disc{background:radial-gradient(circle at 35% 30%,var(--chkL1),var(--chkL2) 60%,var(--chkL3))}
+.pcard.b .disc{background:radial-gradient(circle at 35% 30%,var(--chkD1),var(--chkD2) 60%,var(--chkD3))}
+.pcard .nm{font-size:11.5px;font-weight:700;letter-spacing:.04em;line-height:1.25}
+.pcard .st{font-size:9.5px;color:var(--ink-dim);letter-spacing:.06em}
+.pcard .pts{margin-left:auto;text-align:right}
+.pcard .pts b{font-family:var(--ui-font);font-size:19px;display:block;line-height:1}
+.pcard .pts i{font-style:normal;font-size:8.5px;letter-spacing:.12em;color:var(--ink-dim);text-transform:uppercase}
+
+/* ---------- board ---------- */
+#boardWrap{
+  flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;
+  padding:2px;
+}
+svg#board{
+  width:100%;height:100%;max-width:100%;max-height:100%;
+  filter:drop-shadow(0 18px 30px rgba(0,0,0,.5));
+  touch-action:none;display:block;
+}
+.chk{transition:transform .26s var(--ease);cursor:pointer}
+.chk.sel .body{filter:url(#glow)}
+.hit-area{cursor:pointer;fill:transparent}
+.dieAnim{transform-box:fill-box;transform-origin:center}
+@keyframes tumble{
+  0%{transform:rotate(0) translateY(0)}
+  25%{transform:rotate(-16deg) translateY(-7%)}
+  50%{transform:rotate(14deg) translateY(3%)}
+  75%{transform:rotate(-8deg) translateY(-3%)}
+  100%{transform:rotate(0) translateY(0)}
+}
+.rolling{animation:tumble .16s linear infinite}
+@keyframes pulseRing{0%,100%{opacity:.85}50%{opacity:.32}}
+.destRing{animation:pulseRing 1.15s ease-in-out infinite}
+
+/* ---------- control panel ---------- */
+.panel{
+  background:var(--panel);border:1px solid var(--panel-line);border-radius:var(--radius);
+  padding:8px;display:flex;flex-direction:column;gap:7px;backdrop-filter:blur(8px);
+}
+.msg{
+  font-family:var(--ui-font);font-size:13px;text-align:center;min-height:19px;line-height:1.35;
+  letter-spacing:.01em;
+}
+.msg em{font-style:normal;color:var(--accent);font-weight:700}
+.btnrow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+button.act{
+  appearance:none;border:1px solid var(--panel-line);border-radius:11px;padding:11px 4px 9px;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(0,0,0,.16));
+  color:var(--ink);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  cursor:pointer;transition:transform .12s var(--ease),opacity .2s,box-shadow .2s,border-color .2s;
+  display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1;
+}
+button.act .ic{font-size:15px;line-height:1}
+button.act:active{transform:translateY(1px) scale(.97)}
+button.act:disabled{opacity:.3;cursor:default}
+button.act.primary{
+  border-color:var(--accent);
+  background:linear-gradient(180deg,var(--accent),var(--accent2));
+  color:#1a1008;box-shadow:0 6px 18px -8px var(--accent);
+}
+body[data-theme="nordic"] button.act.primary{color:#fff}
+button.act.primary:not(:disabled){animation:breathe 2.4s ease-in-out infinite}
+@keyframes breathe{0%,100%{box-shadow:0 6px 18px -8px var(--accent)}50%{box-shadow:0 6px 24px -6px var(--accent)}}
+.info{display:flex;justify-content:center;gap:14px;font-size:10px;letter-spacing:.09em;color:var(--ink-dim);text-transform:uppercase}
+.info b{color:var(--ink);font-weight:700}
+
+/* ---------- modal ---------- */
+.modal{
+  position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);
+  display:grid;place-items:center;padding:20px;z-index:40;opacity:0;pointer-events:none;transition:opacity .25s
+}
+.modal.show{opacity:1;pointer-events:auto}
+.card{
+  background:linear-gradient(180deg,var(--panel),var(--panel));
+  border:1px solid var(--panel-line);border-radius:18px;padding:20px;max-width:340px;width:100%;
+  text-align:center;box-shadow:0 30px 60px -20px rgba(0,0,0,.8);transform:translateY(12px) scale(.97);
+  transition:transform .3s var(--ease);
+}
+.modal.show .card{transform:none}
+.card h2{font-family:var(--ui-font);margin:0 0 6px;font-size:22px;letter-spacing:.02em}
+.card p{margin:0 0 14px;font-size:13px;color:var(--ink-dim);line-height:1.5}
+.card .row{display:flex;gap:8px}
+.card .row button{flex:1}
+
+/* ---------- rules ---------- */
+details.rules{
+  background:var(--panel);border:1px solid var(--panel-line);border-radius:var(--radius);
+  padding:9px 12px;font-size:12.5px;line-height:1.55;color:var(--ink-dim);
+}
+details.rules summary{
+  cursor:pointer;color:var(--ink);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  font-weight:700;list-style:none;display:flex;align-items:center;gap:6px;
+}
+details.rules summary::-webkit-details-marker{display:none}
+details.rules summary::after{content:'▾';margin-left:auto;transition:transform .2s}
+details.rules[open] summary::after{transform:rotate(180deg)}
+details.rules ol{margin:9px 0 2px;padding-left:18px}
+details.rules li{margin-bottom:5px}
+details.rules b{color:var(--ink)}
+
+/* landscape / tablet */
+@media (min-aspect-ratio:1/1) and (min-width:640px){
+  #app{flex-direction:row;align-items:stretch;max-width:none;gap:10px;padding-bottom:10px}
+  .side{width:290px;flex:0 0 290px;display:flex;flex-direction:column;gap:7px;overflow:auto}
+  #boardWrap{flex:1 1 auto;order:-1}
+  .btnrow{grid-template-columns:repeat(2,1fr)}
+}
+@media not all and (min-aspect-ratio:1/1){
+  .side{display:contents}
+}
+@media (max-width:340px){ .brand b{font-size:15px} }
+</style>
+</head>
+<body data-theme="walnut">
+<div id="app">
+  <div class="side">
+    <header>
+      <div class="brand"><b>BACKGAMMON</b><span>Two Player · Official Rules</span></div>
+      <div class="swatches" role="group" aria-label="Board theme">
+        <button class="sw walnut" data-theme="walnut" aria-pressed="true" title="Traditional Walnut"></button>
+        <button class="sw emerald" data-theme="emerald" aria-pressed="false" title="Emerald Club"></button>
+        <button class="sw nordic" data-theme="nordic" aria-pressed="false" title="Nordic Slate"></button>
+      </div>
+      <button class="iconbtn off" id="shakeBtn" title="Shake to roll">📳</button>
+      <button class="iconbtn" id="soundBtn" title="Sound on/off">🔊</button>
+      <button class="iconbtn" id="newBtn" title="New game">⟳</button>
+    </header>
+
+    <div class="scores">
+      <div class="pcard w" id="cardW">
+        <div class="disc"></div>
+        <div><div class="nm">IVORY</div><div class="st" id="stW">—</div></div>
+        <div class="pts"><b id="scW">0</b><i>pts</i></div>
+      </div>
+      <div class="pcard b" id="cardB">
+        <div class="disc"></div>
+        <div><div class="nm">EBONY</div><div class="st" id="stB">—</div></div>
+        <div class="pts"><b id="scB">0</b><i>pts</i></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg"></svg></div>
+
+  <div class="side">
+    <div class="panel">
+      <div class="msg" id="msg">Tap <em>Start</em> to open the game.</div>
+      <div class="btnrow">
+        <button class="act primary" id="rollBtn"><span class="ic">🎲</span>Roll</button>
+        <button class="act" id="undoBtn"><span class="ic">↺</span>Undo</button>
+        <button class="act" id="doneBtn"><span class="ic">✓</span>Done</button>
+        <button class="act" id="dblBtn"><span class="ic">✕2</span>Double</button>
+      </div>
+      <div class="info">
+        <span>Pips <b id="pipW">167</b>/<b id="pipB">167</b></span>
+        <span>Cube <b id="cubeTxt">1</b></span>
+        <span>Game <b id="gameNo">1</b></span>
+      </div>
+    </div>
+
+    <details class="rules">
+      <summary>Official rules</summary>
+      <ol>
+        <li><b>Opening.</b> Each player throws one die; the higher throw moves first using both numbers shown. Ties are re-thrown.</li>
+        <li><b>Movement.</b> Ivory runs 24→1, Ebony 1→24. Each die is a separate move; you may move one checker twice or two checkers once.</li>
+        <li><b>Points.</b> You may land on an empty point, your own point, or a point holding a single enemy checker (a <b>blot</b>) — which is <b>hit</b> and sent to the bar. Two or more enemy checkers block the point.</li>
+        <li><b>Doubles</b> are played four times.</li>
+        <li><b>Obligation.</b> Both numbers must be played if legally possible (as many as possible on doubles). If only one can be played, you must play it; if either but not both, you must play the <b>higher</b>.</li>
+        <li><b>The bar.</b> Checkers on the bar re-enter in the opponent's home board before any other move. Blocked on both numbers = turn forfeited.</li>
+        <li><b>Bearing off</b> begins only when all fifteen checkers are home. An exact number bears off from that point; a number larger than your highest occupied point bears off from that highest point; otherwise it must be played as an ordinary move. Being hit stops bear-off until the checker comes all the way home.</li>
+        <li><b>Scoring.</b> 1 point, doubled for a <b>gammon</b> (loser bore off none) and tripled for a <b>backgammon</b> (none off and a checker still on the bar or in the winner's home), multiplied by the cube.</li>
+        <li><b>Doubling cube.</b> Before rolling, the cube owner (or either player when centred) may double the stake. The opponent takes — gaining ownership — or drops and concedes the current value.</li>
+      </ol>
+    </details>
+  </div>
+</div>
+
+<div class="modal" id="modal"><div class="card">
+  <h2 id="mTitle">Title</h2>
+  <p id="mBody">Body</p>
+  <div class="row" id="mRow"></div>
+</div></div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   BACKGAMMON — authentic rules engine + scale-accurate board
+   Geometry is authored in a "horizontal" model space (1500 x 1120 units,
+   1 unit ~= 0.016") and mapped through T() for the portrait layout.
+   ========================================================================== */
+
+/* ---------------------------- geometry model --------------------------- */
+const MW = 1500, MH = 1120;          // model board: 24" x 18"
+const FR = 60;                        // frame thickness
+const PW = 100, PH = 440;             // point width / length  (1.9" x 8.3")
+const BARX0 = 660, BARW = 120;        // bar (2.2")
+const TRX0 = 1380, TRW = 120;         // bear-off tray (2")
+const R = 44;                         // checker radius  (1.75" diameter)
+const DIE = 76, CUBE = 86;
+const TOPY = FR, TOPY2 = FR + PH;             // 60 .. 500
+const BOTY = MH - FR, BOTY2 = MH - FR - PH;   // 1060 .. 620
+
+let MODE = 'h';   // 'h' landscape  |  'v' portrait (rotated 90° CW)
+
+function T(x, y){ return MODE === 'h' ? [x, y] : [MH - y, x]; }
+function Trect(x, y, w, h){
+  if (MODE === 'h') return {x, y, width:w, height:h};
+  return {x: MH - y - h, y: x, width:h, height:w};
+}
+function rectAttr(x,y,w,h,extra){
+  const r = Trect(x,y,w,h);
+  return `x="${r.x.toFixed(1)}" y="${r.y.toFixed(1)}" width="${r.width.toFixed(1)}" height="${r.height.toFixed(1)}"${extra||''}`;
+}
+function pointCX(p){
+  if (p <= 6)  return TRX0 - (p - .5) * PW;
+  if (p <= 12) return BARX0 - (p - 6 - .5) * PW;
+  if (p <= 18) return FR + (p - 13 + .5) * PW;
+  return BARX0 + BARW + (p - 19 + .5) * PW;
+}
+const isTop = p => p >= 13;
+
+/** centre of the k-th checker (0 = closest to the base) on point p */
+function stackPos(p, k, n){
+  const cx = pointCX(p);
+  const sp = n <= 5 ? 2*R : Math.max(24, (PH - 2*R) / (n - 1));
+  return isTop(p) ? [cx, TOPY + R + k*sp] : [cx, BOTY - R - k*sp];
+}
+function barPos(pl, k){
+  return pl === 'w' ? [BARX0 + BARW/2, TOPY2 - R - 6 - k*70]
+                    : [BARX0 + BARW/2, BOTY2 + R + 6 + k*70];
+}
+function offSlab(pl, k){                       // checkers lie flat in the tray
+  const h = 20, gap = 24;
+  return pl === 'w' ? [TRX0 + TRW/2, BOTY - 14 - k*gap, h]
+                    : [TRX0 + TRW/2, TOPY + 14 + k*gap, h];
+}
+const DICEPOS = [[1000, 560], [1120, 560]];    // rolled in the right-hand board
+const OPENPOS = [[1120, 560], [1000, 560]];    // [white die, black die]
+/** dice are shown on the field (landscape) or along the bar band (portrait) */
+function dieXY(i, count){
+  if (MODE === 'h'){
+    if (count === 4) return T(940 + i*80, 560);
+    return T(DICEPOS[i][0], DICEPOS[i][1]);
+  }
+  const y = 720;                                     // centre of the bar band
+  if (count === 4) return [660 + i*92, y];
+  return [790 + i*130, y];
+}
+function openXY(i){
+  if (MODE === 'h') return T(OPENPOS[i][0], OPENPOS[i][1] + (i ? 150 : -150));
+  return [i ? 330 : 790, 720];
+}
+function cubeXY(){
+  if (MODE === 'h'){
+    const y = S.cube.owner === 'w' ? BOTY - 120 : S.cube.owner === 'b' ? TOPY + 120 : MH/2;
+    return T(BARX0 + BARW/2, y);
+  }
+  return [105, 720];
+}
+
+/* ------------------------------ game state ----------------------------- */
+const START = () => {
+  const pts = new Array(25).fill(0);
+  pts[24] = 2; pts[13] = 5; pts[8] = 3; pts[6] = 5;      // + = Ivory (white)
+  pts[1] = -2; pts[12] = -5; pts[17] = -3; pts[19] = -5; // - = Ebony (black)
+  return pts;
+};
+let S, hist = [], sel = null, cands = [], anim = null, gameNo = 1;
+let score = {w:0, b:0}, rolling = false, openDice = null;
+
+function newGame(keepScore){
+  if (!keepScore){ score = {w:0,b:0}; gameNo = 1; }
+  S = {
+    pts: START(), bar:{w:0,b:0}, off:{w:0,b:0},
+    turn:null, dice:[], rem:[], phase:'opening',
+    cube:{val:1, owner:null}, winner:null, result:''
+  };
+  hist = []; sel = null; cands = []; openDice = null;
+  msg('Tap <em>Start</em>, swipe the board or shake the phone — each player throws one die.');
+  buildStatic(); render();
+}
+
+/* ----------------------------- rules engine ---------------------------- */
+const other = pl => pl === 'w' ? 'b' : 'w';
+const own   = (s,p,pl) => pl === 'w' ? Math.max(0, s.pts[p]) : Math.max(0, -s.pts[p]);
+const blocked = (s,p,pl) => pl === 'w' ? s.pts[p] <= -2 : s.pts[p] >= 2;
+
+function allHome(s, pl){
+  if (s.bar[pl] > 0) return false;
+  if (pl === 'w'){ for (let p = 7;  p <= 24; p++) if (s.pts[p] > 0) return false; }
+  else           { for (let p = 1;  p <= 18; p++) if (s.pts[p] < 0) return false; }
+  return true;
+}
+/** all legal half-moves for one die value */
+function genMoves(s, pl, d){
+  const dir = pl === 'w' ? -1 : 1;
+  if (s.bar[pl] > 0){
+    const to = pl === 'w' ? 25 - d : d;
+    return blocked(s, to, pl) ? [] : [{from:'bar', to}];
+  }
+  const out = [], home = allHome(s, pl);
+  for (let p = 1; p <= 24; p++){
+    if (!own(s, p, pl)) continue;
+    const to = p + dir*d;
+    if (to >= 1 && to <= 24){
+      if (!blocked(s, to, pl)) out.push({from:p, to});
+    } else if (home){
+      const need = pl === 'w' ? p : 25 - p;      // pips required to bear off
+      if (d === need) out.push({from:p, to:'off'});
+      else if (d > need){                        // only from the highest point
+        let higher = false;
+        if (pl === 'w'){ for (let q = p+1; q <= 6;  q++) if (s.pts[q] > 0) higher = true; }
+        else           { for (let q = 19;  q <  p;  q++) if (s.pts[q] < 0) higher = true; }
+        if (!higher) out.push({from:p, to:'off'});
+      }
+    }
+  }
+  return out;
+}
+function apply(s, pl, m){
+  const n = {pts:s.pts.slice(), bar:{...s.bar}, off:{...s.off}};
+  const sign = pl === 'w' ? 1 : -1;
+  if (m.from === 'bar') n.bar[pl]--; else n.pts[m.from] -= sign;
+  if (m.to === 'off') n.off[pl]++;
+  else {
+    if (pl === 'w' ? n.pts[m.to] === -1 : n.pts[m.to] === 1){ n.pts[m.to] = 0; n.bar[other(pl)]++; n.hit = true; }
+    n.pts[m.to] += sign;
+  }
+  return n;
+}
+/** maximum number of dice that can still be played from this position */
+const memo = new Map();
+function maxDepth(s, dice, pl){
+  if (!dice.length) return 0;
+  const key = pl + '|' + s.pts.join(',') + '|' + s.bar.w + ',' + s.bar.b + '|' + [...dice].sort().join('');
+  if (memo.has(key)) return memo.get(key);
+  let best = 0;
+  for (const d of new Set(dice)){
+    for (const m of genMoves(s, pl, d)){
+      const rest = dice.slice(); rest.splice(rest.indexOf(d), 1);
+      const v = 1 + maxDepth(apply(s, pl, m), rest, pl);
+      if (v > best) best = v;
+      if (best === dice.length) break;
+    }
+    if (best === dice.length) break;
+  }
+  memo.set(key, best);
+  return best;
+}
+/** legal half-moves right now, honouring "use both dice / play the higher" */
+function candidates(){
+  if (S.phase !== 'moving' || !S.rem.length) return [];
+  const md = maxDepth(S, S.rem, S.turn);
+  if (!md) return [];
+  const out = [], dice = [...new Set(S.rem)];
+  for (const d of dice){
+    for (const m of genMoves(S, S.turn, d)){
+      const rest = S.rem.slice(); rest.splice(rest.indexOf(d), 1);
+      if (maxDepth(apply(S, S.turn, m), rest, S.turn) === md - 1) out.push({...m, die:d});
+    }
+  }
+  if (md === 1 && dice.length === 2){
+    const hi = Math.max(...dice);
+    if (out.some(o => o.die === hi)) return out.filter(o => o.die === hi);
+  }
+  return out;
+}
+function pips(pl){
+  let t = S.bar[pl] * 25;
+  for (let p = 1; p <= 24; p++){ const c = own(S, p, pl); if (c) t += c * (pl === 'w' ? p : 25 - p); }
+  return t;
+}
+
+/* -------------------------------- audio -------------------------------- */
+const Audio_ = (() => {
+  let ctx = null, on = true, master = null, noise = null;
+  function init(){
+    if (ctx) return ctx;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = .9; master.connect(ctx.destination);
+    const len = ctx.sampleRate * 1.2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * (1 - i/len*.3);
+    noise = buf;
+    return ctx;
+  }
+  const t0 = () => ctx.currentTime;
+  /** a wooden clack: filtered noise transient + damped body resonance */
+  function clack(at, {f=1400, q=6, gain=.5, dur=.10, body=190, bodyGain=.25, pan=0} = {}){
+    const src = ctx.createBufferSource(); src.buffer = noise;
+    src.playbackRate.value = .8 + Math.random()*.5;
+    const bp = ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=f; bp.Q.value=q;
+    const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=260;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(.0001, at);
+    g.gain.linearRampToValueAtTime(Math.max(.0002, gain), at + .004);
+    g.gain.exponentialRampToValueAtTime(.0008, at + dur);
+    const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    if (p) p.pan.value = pan;
+    src.connect(bp); bp.connect(hp); hp.connect(g);
+    (p ? (g.connect(p), p) : g).connect(master);
+    src.start(at); src.stop(at + dur + .05);
+
+    if (body > 20 && bodyGain > 0){          // no body resonance for dry clicks
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type='triangle'; o.frequency.setValueAtTime(body, at);
+      o.frequency.exponentialRampToValueAtTime(Math.max(20, body*.72), at + dur*1.6);
+      og.gain.setValueAtTime(.0001, at);
+      og.gain.linearRampToValueAtTime(Math.max(.0002, gain*bodyGain), at + .006);
+      og.gain.exponentialRampToValueAtTime(.0001, at + dur*1.9);
+      o.connect(og); og.connect(p || master); o.start(at); o.stop(at + dur*2 + .05);
+    }
+  }
+  const A = {
+    isOn(){ return on; },
+    toggle(){ on = !on; if (on) { init(); ctx.resume(); } return on; },
+    unlock(){ init(); if (ctx.state === 'suspended') ctx.resume(); },
+    place(){ if(!on) return; init(); clack(t0(), {f:1500, gain:.42, dur:.085, body:230, pan:(Math.random()-.5)*.4}); },
+    pick(){ if(!on) return; init(); clack(t0(), {f:2400, q:9, gain:.18, dur:.045, body:0, bodyGain:0}); },
+    hit(){ if(!on) return; init(); const t=t0();
+      clack(t, {f:900, q:4, gain:.7, dur:.14, body:120, bodyGain:.5});
+      clack(t+.075, {f:1700, gain:.3, dur:.09, body:200, pan:.3}); },
+    dice(n){ if(!on) return; init(); const t=t0();
+      // cup shake then tumbling clatter on the wooden field
+      for (let i=0;i<3;i++) clack(t + i*.055 + Math.random()*.02,
+        {f:700+Math.random()*400, q:2, gain:.16, dur:.07, body:150, bodyGain:.15, pan:(Math.random()-.5)*.6});
+      const k = n || 6;
+      for (let i=0;i<k;i++){
+        const at = t + .20 + i*.072 + Math.random()*.035;
+        clack(at, {f:1600+Math.random()*1400, q:5+Math.random()*6,
+          gain:.5 - i*.045, dur:.075, body:260+Math.random()*160, bodyGain:.22,
+          pan:(Math.random()-.5)*.8});
+      }
+      clack(t + .20 + k*.072 + .10, {f:1200, gain:.3, dur:.11, body:180, bodyGain:.35}); },
+    bear(){ if(!on) return; init(); const t=t0();
+      clack(t, {f:1300, gain:.4, dur:.09, body:300, bodyGain:.3});
+      clack(t+.085, {f:900, gain:.3, dur:.13, body:180, bodyGain:.45, pan:.35}); },
+    deny(){ if(!on) return; init(); const t=t0();
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(96,t+.16);
+      g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.22,t+.012);
+      g.gain.exponentialRampToValueAtTime(.0001,t+.20);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t+.24); },
+    tap(){ if(!on) return; init(); clack(t0(), {f:2800, q:12, gain:.12, dur:.03, body:0, bodyGain:0}); },
+    cube(){ if(!on) return; init(); const t=t0();
+      clack(t,{f:1100,gain:.45,dur:.12,body:210,bodyGain:.4});
+      clack(t+.12,{f:1500,gain:.28,dur:.09,body:280,bodyGain:.25}); },
+    win(){ if(!on) return; init(); const t=t0(); const sc=[523.25,659.25,783.99,1046.5];
+      sc.forEach((f,i)=>{ const at=t+i*.13;
+        const o=ctx.createOscillator(), g=ctx.createGain(), o2=ctx.createOscillator();
+        o.type='triangle'; o2.type='sine'; o.frequency.value=f; o2.frequency.value=f*2;
+        g.gain.setValueAtTime(.0001,at); g.gain.linearRampToValueAtTime(.20,at+.012);
+        g.gain.exponentialRampToValueAtTime(.0001,at+.55);
+        o.connect(g); o2.connect(g); g.connect(master);
+        o.start(at); o.stop(at+.6); o2.start(at); o2.stop(at+.6);
+        clack(at,{f:1800,gain:.2,dur:.06,body:0,bodyGain:0});
+      }); }
+  };
+  // hard guarantee: a sound failure must never interrupt the game
+  const guarded = {};
+  for (const k of Object.keys(A)){
+    if (typeof A[k] === 'function')
+      guarded[k] = (...a) => { try { return A[k](...a); } catch(err){ console.warn('audio', k, err); } };
+  }
+  
+  return guarded;
+})();
+
+/* ------------------------------- rendering ----------------------------- */
+const svg = document.getElementById('board');
+let layers = {};
+
+function buildStatic(){
+  MODE = decideMode();
+  const VW = MODE === 'h' ? MW : MH, VH = MODE === 'h' ? MH : MW;
+  svg.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+
+  let s = `<defs>
+    <linearGradient id="gFrame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--frame3)"/><stop offset=".42" stop-color="var(--frame1)"/>
+      <stop offset="1" stop-color="var(--frame2)"/></linearGradient>
+    <linearGradient id="gField" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="var(--field1)"/><stop offset="1" stop-color="var(--field2)"/></linearGradient>
+    <linearGradient id="gBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="var(--bar2)"/><stop offset=".35" stop-color="var(--bar1)"/>
+      <stop offset=".65" stop-color="var(--bar1)"/><stop offset="1" stop-color="var(--bar2)"/></linearGradient>
+    <linearGradient id="gTray" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="var(--tray2)"/><stop offset=".5" stop-color="var(--tray1)"/>
+      <stop offset="1" stop-color="var(--tray2)"/></linearGradient>
+    <linearGradient id="gPtL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--pt-light1)"/><stop offset="1" stop-color="var(--pt-light2)"/></linearGradient>
+    <linearGradient id="gPtD" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--pt-dark1)"/><stop offset="1" stop-color="var(--pt-dark2)"/></linearGradient>
+    <radialGradient id="gChkW" cx=".36" cy=".30" r=".85">
+      <stop offset="0" stop-color="var(--chkL1)"/><stop offset=".55" stop-color="var(--chkL2)"/>
+      <stop offset="1" stop-color="var(--chkL3)"/></radialGradient>
+    <radialGradient id="gChkB" cx=".36" cy=".30" r=".85">
+      <stop offset="0" stop-color="var(--chkD1)"/><stop offset=".55" stop-color="var(--chkD2)"/>
+      <stop offset="1" stop-color="var(--chkD3)"/></radialGradient>
+    <linearGradient id="gDie" x1="0" y1="0" x2=".4" y2="1">
+      <stop offset="0" stop-color="var(--die-bg1)"/><stop offset="1" stop-color="var(--die-bg2)"/></linearGradient>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="${MODE==='h'?'0.9 0.012':'0.012 0.9'}" numOctaves="4" seed="11" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".55"/></feComponentTransfer></filter>
+    <filter id="felt" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="3" seed="5"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".5"/></feComponentTransfer></filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#000" flood-opacity=".5"/></filter>
+    <filter id="softS" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity=".45"/></filter>
+    <filter id="glow" x="-70%" y="-70%" width="240%" height="240%">
+      <feDropShadow dx="0" dy="0" stdDeviation="13" flood-color="var(--hi)" flood-opacity=".95"/></filter>
+    <clipPath id="clipBoard"><rect ${rectAttr(0,0,MW,MH)} rx="26"/></clipPath>
+  </defs>`;
+
+  /* --- frame & fields --- */
+  s += `<g clip-path="url(#clipBoard)">`;
+  s += `<rect ${rectAttr(0,0,MW,MH)} rx="26" fill="url(#gFrame)"/>`;
+  s += `<rect ${rectAttr(0,0,MW,MH)} rx="26" fill="#8a6a44" filter="url(#grain)" opacity="var(--grain)" style="mix-blend-mode:overlay"/>`;
+  // inner bevel
+  s += `<rect ${rectAttr(FR-9,FR-9,TRX0-FR+18,MH-2*FR+18)} rx="10" fill="none" stroke="var(--edge-lo)" stroke-width="3" opacity=".55"/>`;
+  // two playing halves
+  s += `<rect ${rectAttr(FR,FR,BARX0-FR,MH-2*FR)} fill="url(#gField)"/>`;
+  s += `<rect ${rectAttr(BARX0+BARW,FR,TRX0-BARX0-BARW,MH-2*FR)} fill="url(#gField)"/>`;
+  s += `<rect ${rectAttr(FR,FR,BARX0-FR,MH-2*FR)} fill="#000" filter="url(#felt)" opacity="var(--felt)" style="mix-blend-mode:multiply"/>`;
+  s += `<rect ${rectAttr(BARX0+BARW,FR,TRX0-BARX0-BARW,MH-2*FR)} fill="#000" filter="url(#felt)" opacity="var(--felt)" style="mix-blend-mode:multiply"/>`;
+
+  /* --- points --- */
+  for (let p = 1; p <= 24; p++){
+    const cx = pointCX(p), top = isTop(p);
+    const baseY = top ? TOPY : BOTY, apexY = top ? TOPY2 : BOTY2;
+    const a = T(cx - PW/2 + 1, baseY), b = T(cx + PW/2 - 1, baseY), c = T(cx, apexY);
+    const light = (p % 2 === 1);
+    s += `<polygon points="${a[0].toFixed(1)},${a[1].toFixed(1)} ${b[0].toFixed(1)},${b[1].toFixed(1)} ${c[0].toFixed(1)},${c[1].toFixed(1)}"
+           fill="url(#${light?'gPtL':'gPtD'})" stroke="var(--pt-line)" stroke-width="1.5"
+           opacity="${light?.98:1}"/>`;
+  }
+  /* --- bar --- */
+  s += `<rect ${rectAttr(BARX0,FR-8,BARW,MH-2*FR+16)} rx="8" fill="url(#gBar)" stroke="var(--edge-lo)" stroke-width="2"/>`;
+  s += `<rect ${rectAttr(BARX0,FR-8,BARW,MH-2*FR+16)} rx="8" fill="#8a6a44" filter="url(#grain)" opacity="var(--grain)" style="mix-blend-mode:overlay"/>`;
+  s += `<rect ${rectAttr(BARX0+BARW/2-3,FR+30,6,MH-2*FR-60)} fill="var(--edge-lo)" opacity=".35"/>`;
+  // hinge plates
+  [FR+120, MH-FR-120].forEach(y=>{
+    s += `<rect ${rectAttr(BARX0+22,y-26,BARW-44,52)} rx="6" fill="var(--edge-hi)" opacity=".18"/>`;
+  });
+
+  /* --- bear-off tray --- */
+  s += `<rect ${rectAttr(TRX0,FR-8,TRW,MH-2*FR+16)} rx="8" fill="url(#gTray)" stroke="var(--edge-lo)" stroke-width="2"/>`;
+  s += `<rect ${rectAttr(TRX0+14,FR+2,TRW-28,MH/2-FR-14)} rx="6" fill="#000" opacity=".22"/>`;
+  s += `<rect ${rectAttr(TRX0+14,MH/2+12,TRW-28,MH/2-FR-14)} rx="6" fill="#000" opacity=".22"/>`;
+
+  /* --- point numbers on the frame --- */
+  for (let p = 1; p <= 24; p++){
+    const cx = pointCX(p), top = isTop(p);
+    const [tx, ty] = T(cx, top ? FR - 26 : MH - FR + 26);
+    s += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" dominant-baseline="central"
+            font-size="24" font-family="Georgia,serif" fill="var(--edge-hi)" opacity=".55">${p}</text>`;
+  }
+  s += `</g>`;
+
+  s += `<g id="lChk"></g><g id="lHi"></g><g id="lDice"></g><g id="lHit"></g>`;
+  svg.innerHTML = s;
+  layers = { chk: svg.querySelector('#lChk'), hi: svg.querySelector('#lHi'),
+             dice: svg.querySelector('#lDice'), hit: svg.querySelector('#lHit') };
+  chkNodes = {}; buildHitAreas();
+}
+
+function decideMode(){
+  const w = document.getElementById('boardWrap');
+  const r = w.getBoundingClientRect();
+  return (r.width / Math.max(1, r.height)) >= 1.12 ? 'h' : 'v';
+}
+
+/* ---- checkers (re-used nodes so movement animates) ---- */
+let chkNodes = {};
+function chkNode(id, color){
+  if (chkNodes[id]) return chkNodes[id];
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('class','chk');
+  g.innerHTML = `
+    <g class="body" filter="url(#softS)">
+      <circle r="${R}" fill="url(#gChk${color==='w'?'W':'B'})" stroke="var(--chk${color==='w'?'L':'D'}rim)" stroke-width="2.5"/>
+      <circle r="${R*.78}" fill="none" stroke="${color==='w'?'rgba(120,100,70,.35)':'rgba(255,255,255,.10)'}" stroke-width="2.5"/>
+      <circle r="${R*.60}" fill="none" stroke="${color==='w'?'rgba(120,100,70,.22)':'rgba(255,255,255,.07)'}" stroke-width="1.5"/>
+      <circle r="${R*.30}" fill="${color==='w'?'rgba(255,255,255,.35)':'rgba(255,255,255,.05)'}"/>
+      <ellipse cx="${-R*.28}" cy="${-R*.34}" rx="${R*.40}" ry="${R*.26}" fill="rgba(255,255,255,${color==='w'?.55:.16})" transform="rotate(-28)"/>
+    </g>`;
+  layers.chk.appendChild(g); chkNodes[id] = g; return g;
+}
+function renderCheckers(){
+  for (const pl of ['w','b']){
+    const spots = [];
+    for (let k = 0; k < S.bar[pl]; k++) spots.push({pos: barPos(pl,k), src:'bar'});
+    const order = pl === 'w' ? [...Array(24)].map((_,i)=>i+1) : [...Array(24)].map((_,i)=>24-i);
+    for (const p of order){
+      const n = own(S, p, pl);
+      for (let k = 0; k < n; k++) spots.push({pos: stackPos(p,k,n), src:p});
+    }
+    let selTop = -1;
+    if (sel !== null && pl === S.turn)
+      for (let i = 0; i < spots.length; i++) if (String(spots[i].src) === String(sel)) selTop = i;
+    for (let i = 0; i < 15; i++){
+      const node = chkNode(pl + i, pl);
+      if (i < spots.length){
+        const [x, y] = T(spots[i].pos[0], spots[i].pos[1]);
+        node.style.display = '';
+        node.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+        node.classList.toggle('sel', i === selTop);
+      } else node.style.display = 'none';
+    }
+  }
+  // borne-off checkers lie flat in the tray
+  let t = '';
+  for (const pl of ['w','b']){
+    for (let k = 0; k < S.off[pl]; k++){
+      const [cx, cy, h] = offSlab(pl, k);
+      const r = Trect(cx - 46, cy - h/2, 92, h);
+      t += `<rect x="${r.x.toFixed(1)}" y="${r.y.toFixed(1)}" width="${r.width.toFixed(1)}" height="${r.height.toFixed(1)}"
+             rx="${(h/2.4).toFixed(1)}" fill="url(#gChk${pl==='w'?'W':'B'})"
+             stroke="var(--chk${pl==='w'?'L':'D'}rim)" stroke-width="1.5"/>`;
+    }
+  }
+  offLayerHTML = t;
+}
+let offLayerHTML = '';
+
+/* ---- highlights, dice, cube ---- */
+function renderOverlay(){
+  let s = offLayerHTML;
+  // destination markers for the selected checker
+  if (sel !== null){
+    const dests = cands.filter(c => String(c.from) === String(sel));
+    for (const d of dests){
+      if (d.to === 'off'){
+        const r = Trect(TRX0 + 6, S.turn === 'w' ? MH/2 + 6 : FR - 4, TRW - 12, MH/2 - FR);
+        s += `<rect class="destRing" x="${r.x}" y="${r.y}" width="${r.width}" height="${r.height}" rx="10"
+               fill="var(--hi-soft)" stroke="var(--hi)" stroke-width="4" stroke-dasharray="14 10"/>`;
+      } else {
+        const n = own(S, d.to, S.turn);
+        const [x, y] = T(...stackPos(d.to, n, Math.max(n+1, 1)));
+        s += `<circle class="destRing" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${R-4}"
+                fill="var(--hi-soft)" stroke="var(--hi)" stroke-width="4" stroke-dasharray="12 9"/>`;
+        s += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="central"
+                font-size="34" font-family="Georgia,serif" fill="var(--hi)" opacity=".9">${d.die}</text>`;
+      }
+    }
+  } else if (S.phase === 'moving'){
+    // subtle markers on movable sources
+    const srcs = [...new Set(cands.map(c => String(c.from)))];
+    for (const f of srcs){
+      let pos;
+      if (f === 'bar') pos = barPos(S.turn, S.bar[S.turn] - 1);
+      else { const n = own(S, +f, S.turn); pos = stackPos(+f, n-1, n); }
+      const [x, y] = T(pos[0], pos[1]);
+      s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${R+5}" fill="none"
+              stroke="var(--hi)" stroke-width="3" opacity=".55"/>`;
+    }
+  }
+  layers.hi.innerHTML = s;
+  renderDice();
+}
+
+function pipXY(v, i){ // pip layout (unit square)
+  const L = {
+    1:[[.5,.5]], 2:[[.28,.28],[.72,.72]], 3:[[.26,.26],[.5,.5],[.74,.74]],
+    4:[[.28,.28],[.72,.28],[.28,.72],[.72,.72]],
+    5:[[.27,.27],[.73,.27],[.5,.5],[.27,.73],[.73,.73]],
+    6:[[.28,.24],[.72,.24],[.28,.5],[.72,.5],[.28,.76],[.72,.76]]
+  }[v];
+  return L[i];
+}
+function dieSVG(x, y, v, size, used, cls){
+  const h = size/2;
+  let s = `<g class="${cls||''}" opacity="${used?.34:1}">
+    <rect x="${(x-h).toFixed(1)}" y="${(y-h).toFixed(1)}" width="${size}" height="${size}" rx="${size*.20}"
+      fill="url(#gDie)" stroke="rgba(0,0,0,.45)" stroke-width="2" filter="url(#softS)"/>
+    <rect x="${(x-h+4).toFixed(1)}" y="${(y-h+4).toFixed(1)}" width="${size-8}" height="${size-8}" rx="${size*.16}"
+      fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2"/>`;
+  const pipR = size * .085;
+  for (let i = 0; i < v; i++){
+    const [px, py] = pipXY(v, i);
+    s += `<circle cx="${(x-h+px*size).toFixed(1)}" cy="${(y-h+py*size).toFixed(1)}" r="${pipR.toFixed(1)}"
+            fill="var(--die-pip)"/>`;
+  }
+  return s + `</g>`;
+}
+function cubeSVG(){
+  const c = S.cube, [x, yy] = cubeXY(), h = CUBE/2;
+  const ring = c.owner ? `<rect x="${(x-h-7).toFixed(1)}" y="${(yy-h-7).toFixed(1)}" width="${CUBE+14}" height="${CUBE+14}"
+      rx="${CUBE*.26}" fill="none" stroke="${c.owner==='w'?'var(--chkL2)':'var(--chkD1)'}" stroke-width="5"/>` : '';
+  return `<g opacity="${S.phase==='opening'?.55:1}">${ring}
+    <rect x="${(x-h).toFixed(1)}" y="${(yy-h).toFixed(1)}" width="${CUBE}" height="${CUBE}" rx="${CUBE*.19}"
+      fill="url(#gDie)" stroke="rgba(0,0,0,.5)" stroke-width="2" filter="url(#softS)"/>
+    <text x="${x.toFixed(1)}" y="${(yy+2).toFixed(1)}" text-anchor="middle" dominant-baseline="central"
+      font-size="${c.val>9?38:44}" font-family="Georgia,serif" font-weight="bold" fill="var(--die-pip)">${c.val}</text>
+  </g>`;
+}
+function renderDice(){
+  let s = cubeSVG();
+  if (S.phase === 'opening' && openDice){
+    s += dieSVG(...openXY(0), openDice[0], DIE, false, rolling?'rolling dieAnim':'');
+    s += dieSVG(...openXY(1), openDice[1], DIE, false, rolling?'rolling dieAnim':'');
+  } else if (S.dice.length){
+    const shown = S.dice.length === 4 ? [S.dice[0], S.dice[0], S.dice[0], S.dice[0]] : S.dice;
+    const usedCount = shown.length - S.rem.length;
+    if (shown.length === 4){
+      for (let i = 0; i < 4; i++)
+        s += dieSVG(...dieXY(i, 4), shown[0], DIE*.82, i < usedCount, rolling?'rolling dieAnim':'');
+    } else {
+      const remCopy = S.rem.slice();
+      shown.forEach((v, i) => {
+        const idx = remCopy.indexOf(v); let used = true;
+        if (idx > -1){ remCopy.splice(idx,1); used = false; }
+        s += dieSVG(...dieXY(i, 2), v, DIE, used, rolling?'rolling dieAnim':'');
+      });
+    }
+  }
+  layers.dice.innerHTML = s;
+}
+
+/* ---- invisible touch targets ---- */
+function buildHitAreas(){
+  let s = '';
+  for (let p = 1; p <= 24; p++){
+    const cx = pointCX(p), top = isTop(p);
+    s += `<rect class="hit-area" data-t="${p}" ${rectAttr(cx-PW/2, top?FR:BOTY2-10, PW, PH+10)}/>`;
+  }
+  s += `<rect class="hit-area" data-t="barw" ${rectAttr(BARX0,FR,BARW,MH/2-FR)}/>`;
+  s += `<rect class="hit-area" data-t="barb" ${rectAttr(BARX0,MH/2,BARW,MH/2-FR)}/>`;
+  s += `<rect class="hit-area" data-t="offb" ${rectAttr(TRX0,FR,TRW,MH/2-FR)}/>`;
+  s += `<rect class="hit-area" data-t="offw" ${rectAttr(TRX0,MH/2,TRW,MH/2-FR)}/>`;
+  layers.hit.innerHTML = s;
+}
+
+function render(){
+  renderCheckers(); cands = candidates(); renderOverlay(); renderUI();
+}
+
+/* --------------------------------- UI ---------------------------------- */
+const $ = id => document.getElementById(id);
+function msg(html){ $('msg').innerHTML = html; }
+const NAME = {w:'Ivory', b:'Ebony'};
+
+function renderUI(){
+  $('scW').textContent = score.w; $('scB').textContent = score.b;
+  $('pipW').textContent = pips('w'); $('pipB').textContent = pips('b');
+  $('cubeTxt').textContent = S.cube.val + (S.cube.owner ? ' · ' + NAME[S.cube.owner] : '');
+  $('gameNo').textContent = gameNo;
+  $('cardW').classList.toggle('active', S.turn === 'w' && S.phase !== 'over');
+  $('cardB').classList.toggle('active', S.turn === 'b' && S.phase !== 'over');
+  const st = pl => S.bar[pl] ? `On bar: ${S.bar[pl]}` :
+                   S.off[pl] ? `Borne off: ${S.off[pl]}/15` :
+                   allHome(S, pl) ? 'All home' : `${pips(pl)} pips`;
+  $('stW').textContent = st('w'); $('stB').textContent = st('b');
+
+  const moving = S.phase === 'moving';
+  $('rollBtn').disabled = !(S.phase === 'opening' || S.phase === 'awaitRoll') || rolling;
+  $('rollBtn').innerHTML = `<span class="ic">🎲</span>${S.phase === 'opening' ? 'Start' : 'Roll'}`;
+  $('undoBtn').disabled = !(moving && hist.length);
+  $('doneBtn').disabled = !(moving && cands.length === 0);
+  $('doneBtn').classList.toggle('primary', moving && cands.length === 0);
+  $('rollBtn').classList.toggle('primary', !$('rollBtn').disabled);
+  $('dblBtn').disabled = !(S.phase === 'awaitRoll' && S.cube.val < 64 &&
+                           (S.cube.owner === null || S.cube.owner === S.turn));
+}
+
+/* ------------------------------ game flow ------------------------------ */
+const d6 = () => 1 + Math.floor(Math.random() * 6);
+
+function animateRoll(cb){
+  rolling = true; Audio_.dice(6); if (navigator.vibrate) navigator.vibrate([12,60,18,50,24]); renderUI();
+  const t = setInterval(() => {
+    if (S.phase === 'opening') openDice = [d6(), d6()];
+    else S.dice = S.dice.map(() => d6());
+    renderDice();
+  }, 80);
+  setTimeout(() => { clearInterval(t); rolling = false; cb(); }, 760);
+}
+
+function doRoll(){
+  Audio_.unlock();
+  if (S.phase === 'opening'){
+    openDice = [d6(), d6()];
+    animateRoll(() => {
+      let a = d6(), b = d6();
+      while (a === b){ a = d6(); b = d6(); }
+      openDice = [a, b];
+      S.turn = a > b ? 'w' : 'b';
+      S.dice = [a, b]; S.rem = [a, b]; S.phase = 'moving';
+      memo.clear(); hist = [];
+      msg(`Opening throw <em>${a}–${b}</em> — <em>${NAME[S.turn]}</em> moves first.`);
+      setTimeout(() => { openDice = null; render(); afterRollCheck(); }, 620);
+      render();
+    });
+    return;
+  }
+  if (S.phase !== 'awaitRoll') return;
+  const a = d6(), b = d6();
+  S.dice = [a, b]; S.rem = a === b ? [a,a,a,a] : [a,b];
+  animateRoll(() => {
+    S.dice = [a, b]; S.rem = a === b ? [a,a,a,a] : [a,b];
+    S.phase = 'moving'; memo.clear(); hist = [];
+    msg(`<em>${NAME[S.turn]}</em> rolls <em>${a}–${b}</em>${a===b?' — doubles, four moves!':''}`);
+    render(); afterRollCheck();
+  });
+  render();
+}
+function afterRollCheck(){
+  render();
+  if (!cands.length){
+    Audio_.deny();
+    msg(S.bar[S.turn] ? `<em>${NAME[S.turn]}</em> is dancing — both entry points are blocked.`
+                      : `<em>${NAME[S.turn]}</em> has no legal move. Turn forfeited.`);
+    renderUI();
+  }
+}
+
+function endTurn(){
+  if (S.phase !== 'moving') return;
+  Audio_.tap();
+  sel = null; hist = []; S.dice = []; S.rem = [];
+  S.turn = other(S.turn); S.phase = 'awaitRoll'; memo.clear();
+  msg(`<em>${NAME[S.turn]}</em> to roll — tap, swipe or shake.`);
+  render();
+}
+
+function makeMove(m){
+  hist.push({pts:S.pts.slice(), bar:{...S.bar}, off:{...S.off}, rem:S.rem.slice()});
+  const n = apply(S, S.turn, m);
+  const wasHit = !!n.hit;
+  S.pts = n.pts; S.bar = n.bar; S.off = n.off;
+  S.rem.splice(S.rem.indexOf(m.die), 1);
+  sel = null; memo.clear();
+  if (m.to === 'off') Audio_.bear(); else if (wasHit) Audio_.hit(); else Audio_.place();
+  if (navigator.vibrate) navigator.vibrate(wasHit ? [18, 40, 26] : 12);
+  render();
+
+  if (S.off[S.turn] === 15){ finish(S.turn); return; }
+  if (wasHit) msg(`Blot hit — <em>${NAME[other(S.turn)]}</em> goes to the bar.`);
+  else if (m.to === 'off') msg(`<em>${NAME[S.turn]}</em> bears off (${S.off[S.turn]}/15).`);
+  else if (S.rem.length && cands.length) msg(`<em>${NAME[S.turn]}</em>: ${S.rem.length} number${S.rem.length>1?'s':''} left.`);
+  if (S.phase === 'moving' && !cands.length){
+    msg(`No further legal moves — tap <em>Done</em>.`);
+    renderUI();
+  }
+}
+function undo(){
+  if (!hist.length) return;
+  const h = hist.pop();
+  S.pts = h.pts; S.bar = h.bar; S.off = h.off; S.rem = h.rem;
+  sel = null; memo.clear(); Audio_.pick();
+  msg(`Move taken back.`); render();
+}
+
+function finish(winner){
+  const loser = other(winner);
+  let mult = 1, kind = 'single game';
+  if (S.off[loser] === 0){
+    const inWinnerHome = winner === 'w'
+      ? S.pts.slice(1,7).some(v => v < 0)
+      : S.pts.slice(19,25).some(v => v > 0);
+    if (S.bar[loser] > 0 || inWinnerHome){ mult = 3; kind = 'BACKGAMMON'; }
+    else { mult = 2; kind = 'gammon'; }
+  }
+  const pts = mult * S.cube.val;
+  score[winner] += pts;
+  S.phase = 'over'; S.winner = winner; sel = null;
+  Audio_.win(); render();
+  showModal(`${NAME[winner]} wins!`,
+    `${kind.toUpperCase()} · cube ${S.cube.val} → <b>${pts} point${pts>1?'s':''}</b><br>
+     Match: Ivory ${score.w} — ${score.b} Ebony`,
+    [{t:'Next game', p:true, f:()=>{ gameNo++; hideModal(); newGame(true); msg(`Game ${gameNo}. Tap <em>Start</em>.`); }},
+     {t:'Reset match', f:()=>{ hideModal(); newGame(false); }}]);
+}
+
+/* -------------------------------- cube --------------------------------- */
+function offerDouble(){
+  if ($('dblBtn').disabled) return;
+  Audio_.cube();
+  const v = S.cube.val * 2, opp = other(S.turn);
+  showModal(`Double to ${v}`,
+    `<b>${NAME[S.turn]}</b> offers the cube.<br><b>${NAME[opp]}</b>, do you take?`,
+    [{t:`Take (${v})`, p:true, f:()=>{ S.cube.val = v; S.cube.owner = opp; hideModal(); Audio_.cube();
+        msg(`<em>${NAME[opp]}</em> takes. The cube is at ${v}.`); render(); }},
+     {t:'Drop', f:()=>{ hideModal(); score[S.turn] += S.cube.val; S.phase='over';
+        Audio_.win(); render();
+        showModal(`${NAME[opp]} drops`, `<b>${NAME[S.turn]}</b> scores ${S.cube.val} point${S.cube.val>1?'s':''}.<br>
+          Match: Ivory ${score.w} — ${score.b} Ebony`,
+          [{t:'Next game', p:true, f:()=>{ gameNo++; hideModal(); newGame(true); msg(`Game ${gameNo}. Tap <em>Start</em>.`);}},
+           {t:'Reset match', f:()=>{ hideModal(); newGame(false); }}]); }}]);
+}
+
+/* ------------------------------- modal --------------------------------- */
+function showModal(title, body, btns){
+  $('mTitle').innerHTML = title; $('mBody').innerHTML = body;
+  const row = $('mRow'); row.innerHTML = '';
+  btns.forEach(b => {
+    const el = document.createElement('button');
+    el.className = 'act' + (b.p ? ' primary' : ''); el.textContent = b.t;
+    el.onclick = () => { Audio_.tap(); b.f(); };
+    row.appendChild(el);
+  });
+  $('modal').classList.add('show');
+}
+function hideModal(){ $('modal').classList.remove('show'); }
+
+/* ------------------------------- input ---------------------------------
+   Mobile-first: tap-to-select / tap-to-move, drag & drop a checker with the
+   finger, swipe-flick anywhere on the board to throw the dice, or shake the
+   phone. Falls back to mouse for desktop.
+   ----------------------------------------------------------------------- */
+const canRoll = () => (S.phase === 'opening' || S.phase === 'awaitRoll') && !rolling;
+
+function zoneAt(cx, cy){
+  const el = document.elementFromPoint(cx, cy);
+  const t = el && el.closest ? el.closest('[data-t]') : null;
+  return t ? t.dataset.t : null;
+}
+function toSVG(cx, cy){
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return null;
+  const pt = svg.createSVGPoint(); pt.x = cx; pt.y = cy;
+  const q = pt.matrixTransform(ctm.inverse());
+  return {x:q.x, y:q.y};
+}
+/** the source key (point number or 'bar') a zone represents, if it can move */
+function sourceOf(zone){
+  if (!zone || S.phase !== 'moving') return null;
+  let src = null;
+  if (zone === 'barw' || zone === 'barb'){
+    if ((zone === 'barw' ? 'w' : 'b') === S.turn && S.bar[S.turn]) src = 'bar';
+  } else if (/^\d+$/.test(zone) && own(S, +zone, S.turn)) src = +zone;
+  if (src === null) return null;
+  return cands.some(c => String(c.from) === String(src)) ? src : null;
+}
+/** the legal move from `from` onto `zone`, if any */
+function moveTo(from, zone){
+  if (from === null || !zone) return null;
+  if (zone === 'offw' || zone === 'offb')
+    return zone === ('off' + S.turn)
+      ? cands.find(c => String(c.from) === String(from) && c.to === 'off') : null;
+  if (/^\d+$/.test(zone))
+    return cands.find(c => String(c.from) === String(from) && c.to === +zone);
+  return null;
+}
+function nearCube(p){
+  if (!p) return false;
+  const [cx, cy] = cubeXY();
+  return Math.abs(p.x - cx) < CUBE*.8 && Math.abs(p.y - cy) < CUBE*.8;
+}
+
+/* ---- floating checker that follows the finger ---- */
+let ghost = null;
+function makeGhost(color, p){
+  killGhost();
+  ghost = document.createElementNS('http://www.w3.org/2000/svg','g');
+  ghost.setAttribute('pointer-events','none');
+  ghost.innerHTML = `<circle r="${R*1.06}" fill="url(#gChk${color==='w'?'W':'B'})"
+      stroke="var(--hi)" stroke-width="4" opacity=".96" filter="url(#soft)"/>
+    <circle r="${R*.62}" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="2"/>`;
+  svg.appendChild(ghost); moveGhost(p);
+}
+function moveGhost(p){ if (ghost && p) ghost.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`); }
+function killGhost(){ if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost); ghost = null; }
+
+/* ---- gesture state machine ---- */
+let G = null;   // {x0,y0,t0,mode,src,moved}
+
+function down(cx, cy){
+  Audio_.unlock();
+  if (S.phase === 'over') return;
+  const zone = zoneAt(cx, cy), p = toSVG(cx, cy);
+
+  if (nearCube(p) && !$('dblBtn').disabled){ G = {mode:'cube'}; return; }
+
+  // a checker already selected and this is one of its destinations -> tap-move
+  if (sel !== null && moveTo(sel, zone)){ G = {mode:'dest', zone, x0:cx, y0:cy}; return; }
+
+  const src = sourceOf(zone);
+  if (src !== null){
+    if (String(sel) !== String(src)){ sel = src; Audio_.pick(); render(); }
+    makeGhost(S.turn, p);
+    G = {mode:'drag', src, x0:cx, y0:cy, t0:Date.now(), moved:false};
+    return;
+  }
+  G = {mode:'free', x0:cx, y0:cy, t0:Date.now(), moved:false};
+}
+function move(cx, cy){
+  if (!G) return;
+  const d = Math.hypot(cx - (G.x0||cx), cy - (G.y0||cy));
+  if (d > 8) G.moved = true;
+  if (G.mode === 'drag') moveGhost(toSVG(cx, cy));
+}
+function up(cx, cy){
+  if (!G) return;
+  const g = G; G = null; killGhost();
+  const zone = zoneAt(cx, cy);
+  const dist = Math.hypot(cx - (g.x0||cx), cy - (g.y0||cy));
+  const dt = Date.now() - (g.t0 || Date.now());
+
+  if (g.mode === 'cube'){ offerDouble(); return; }
+
+  if (g.mode === 'dest'){
+    const m = moveTo(sel, zone) || moveTo(sel, g.zone);
+    if (m) makeMove(m); 
+    return;
+  }
+  if (g.mode === 'drag'){
+    const m = moveTo(g.src, zone);
+    if (m){ makeMove(m); return; }                 // dropped on a legal point
+    if (!g.moved) return;                          // simple tap -> stays selected
+    if (zone && String(zone) === String(g.src)) return;
+    sel = null; Audio_.tap(); render();             // dragged nowhere useful
+    return;
+  }
+  // free area: swipe-flick or tap throws the dice
+  if (canRoll()){
+    if (dist > 40 && dt < 900){ Audio_.tap(); doRoll(); return; }   // flick
+    if (dist < 14){ doRoll(); return; }                              // tap
+    return;
+  }
+  if (sel !== null){                                // tap on empty space clears
+    const m = moveTo(sel, zone);
+    if (m) { makeMove(m); return; }
+    sel = null; render();
+  } else if (S.phase === 'moving' && zone && /^\d+$/.test(zone) && own(S, +zone, S.turn)){
+    Audio_.deny(); msg('That checker has no legal move.');
+  }
+}
+
+if (window.PointerEvent){
+  svg.addEventListener('pointerdown', e => { e.preventDefault(); svg.setPointerCapture?.(e.pointerId); down(e.clientX, e.clientY); });
+  svg.addEventListener('pointermove', e => move(e.clientX, e.clientY));
+  svg.addEventListener('pointerup',   e => up(e.clientX, e.clientY));
+  svg.addEventListener('pointercancel', () => { G = null; killGhost(); });
+} else {
+  svg.addEventListener('touchstart', e => { const t = e.changedTouches[0]; e.preventDefault(); down(t.clientX, t.clientY); }, {passive:false});
+  svg.addEventListener('touchmove',  e => { const t = e.changedTouches[0]; e.preventDefault(); move(t.clientX, t.clientY); }, {passive:false});
+  svg.addEventListener('touchend',   e => { const t = e.changedTouches[0]; up(t.clientX, t.clientY); });
+  svg.addEventListener('mousedown',  e => down(e.clientX, e.clientY));
+  svg.addEventListener('mousemove',  e => move(e.clientX, e.clientY));
+  svg.addEventListener('mouseup',    e => up(e.clientX, e.clientY));
+}
+
+/* ---- shake to roll ---- */
+let shakeOK = false, lastShake = 0, lastAcc = null;
+function onMotion(e){
+  const a = e.accelerationIncludingGravity || e.acceleration;
+  if (!a || a.x === null) return;
+  if (lastAcc){
+    const d = Math.abs(a.x-lastAcc.x) + Math.abs(a.y-lastAcc.y) + Math.abs(a.z-lastAcc.z);
+    if (d > 32 && Date.now() - lastShake > 1400 && canRoll()){
+      lastShake = Date.now();
+      if (navigator.vibrate) navigator.vibrate(35);
+      doRoll();
+    }
+  }
+  lastAcc = {x:a.x, y:a.y, z:a.z};
+}
+function enableShake(){
+  const DME = window.DeviceMotionEvent;
+  if (!DME) return false;
+  if (typeof DME.requestPermission === 'function'){
+    DME.requestPermission().then(r => {
+      if (r === 'granted'){ window.addEventListener('devicemotion', onMotion); shakeOK = true;
+        $('shakeBtn').classList.remove('off'); msg('Shake to throw enabled — <em>shake the phone</em> to roll.'); }
+    }).catch(()=>{});
+    return true;
+  }
+  window.addEventListener('devicemotion', onMotion); shakeOK = true;
+  return true;
+}
+
+$('rollBtn').onclick = () => { Audio_.tap(); doRoll(); };
+$('undoBtn').onclick = () => undo();
+$('doneBtn').onclick = () => endTurn();
+$('dblBtn').onclick  = () => offerDouble();
+$('newBtn').onclick  = () => { Audio_.unlock(); Audio_.tap();
+  showModal('New game?', 'Start a fresh game. The match score can be kept.',
+    [{t:'Keep score', p:true, f:()=>{ hideModal(); gameNo++; newGame(true); }},
+     {t:'Reset all', f:()=>{ hideModal(); newGame(false); }}]); };
+$('shakeBtn').onclick = () => { Audio_.unlock(); Audio_.tap();
+  if (shakeOK){ window.removeEventListener('devicemotion', onMotion); shakeOK = false;
+    $('shakeBtn').classList.add('off'); msg('Shake to throw disabled.'); return; }
+  if (!enableShake()) msg('This device has no motion sensor — tap or swipe the board to roll.');
+  else if (shakeOK){ $('shakeBtn').classList.remove('off'); msg('Shake to throw enabled — <em>shake the phone</em> to roll.'); } };
+$('soundBtn').onclick = () => { const on = Audio_.toggle();
+  $('soundBtn').textContent = on ? '🔊' : '🔇'; $('soundBtn').classList.toggle('off', !on); if (on) Audio_.tap(); };
+
+document.querySelectorAll('.sw').forEach(b => b.onclick = () => {
+  Audio_.unlock(); Audio_.tap();
+  document.body.dataset.theme = b.dataset.theme;
+  document.querySelectorAll('.sw').forEach(x => x.setAttribute('aria-pressed', x === b));
+  document.querySelector('meta[name=theme-color]').content =
+    {walnut:'#2b1a0f', emerald:'#08170f', nordic:'#e9e6e0'}[b.dataset.theme];
+});
+$('modal').addEventListener('click', e => { if (e.target === $('modal')) hideModal(); });
+
+/* --------------------------- responsive rebuild ------------------------ */
+let rt = null;
+function onResize(){
+  clearTimeout(rt);
+  rt = setTimeout(() => { const m = decideMode(); if (m !== MODE){ buildStatic(); render(); } }, 120);
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+window.addEventListener('error', e => {
+  const m = $('msg'); if (m) m.innerHTML = '<em>Error:</em> ' + (e.message || e);
+});
+newGame(false);
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a34798d93b62be94',t:'MTc4ODMwMDU0Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
